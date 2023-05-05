@@ -1,0 +1,148 @@
+@import "../../../styles/configs";
+
+.dropdownContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.dropdown{
+  width: 160px;
+  .orderBy{
+   
+    cursor: pointer;
+    &:active{
+      background-color: $secondary-green;
+      color: $primary-black;
+    }
+    &:hover{
+      background-color: $secondary-brown;
+    }
+  }
+}
+.buttonDrop{
+  background-color: $primary-green;
+  border-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover{
+    background-color: $tertiary-green;
+    border-color: transparent;
+  }
+  &:global(.btn){
+    &:active{
+      background-color: $tertiary-green;
+      border-color: transparent;
+    }
+  }
+
+}
+.containerWrap {
+  overflow: auto;
+}
+
+.wrap {
+  min-width: 450px;
+  font-size: 12px;
+  &:global(.table-sm) {
+    & > :global(:not(caption)) {
+      &  > * > * {
+        padding: 0;
+      }
+    }
+  }
+
+  .dataName {
+    color: $primary-green;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    @include font(700, 14px, 16px, 0);
+    padding: 10px;
+  }
+  .bodyWrap {
+    .hikeRow {
+      display: flex;
+      flex-direction: column;
+      .hikeFirstRow {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+        padding: 5px;
+        border-bottom: 1px solid $secondary-blue;
+
+        .button{
+          background-color: $primary-green;
+          border-color: transparent;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          margin: auto;
+          &:hover{
+            background-color: $tertiary-green;
+            border-color: transparent;
+          }
+          .optionIcon {
+            font-size: 18px;
+          }
+        }
+      }
+      .innerTable {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+    .bottomWrap {
+      padding: 10px;
+      text-align: left;
+      .disclaimer {
+        font-weight: 700;
+      }
+      .optionWrap {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        flex-direction: column;
+        margin-top: 10px;
+        .inputForm {
+          &:not(&:first-child) {
+            margin-top: 10px;
+          }
+        }
+        .formGroup {
+          display: flex;
+          align-items: center;
+          :global(.form-control) {
+            margin-right: 10px;
+          }
+          .inputError {
+            border-color: $primary-error;
+          }
+          .button {
+            background-color: $primary-green;
+            border-color: transparent;
+            white-space: nowrap;
+            &:hover{
+              background-color: $tertiary-green;
+              border-color: transparent;
+              
+            }
+            &:global(.btn){
+              &:active{
+                background-color: $tertiary-green;
+                border-color: transparent;
+                
+              }
+            }
+          }
+        }
+        .formError {
+          margin-top: 0.25rem;
+          font-size: 0.875em;
+          color: $primary-error;
+        }
+      }
+    }
+  } 
+}
