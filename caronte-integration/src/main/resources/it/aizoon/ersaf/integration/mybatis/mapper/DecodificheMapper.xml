@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.DecodificheMapper">
+
+	<select id="getDatiTipoDomanda" parameterType="java.lang.Long" 
+		resultType="it.aizoon.ersaf.dto.TipoDomandaDTO">
+		SELECT id_tipo_comunicazione,
+		       desc_breve,
+		       desc_estesa,
+		       istruzioni,
+		       abilitato,
+		       qualita_di,
+		       inizio_validita,
+		       fine_validita,
+		       id_tipo_stampa		       
+		  FROM car_d_tipo_comunicazione tipo
+		 WHERE id_tipo_comunicazione = #{idTipoDomanda,jdbcType=DECIMAL}
+	</select>		
+	
+	<select id="getZoneProtette" 	resultType="it.aizoon.ersaf.dto.generati.CarDGruppoZonaProtetta">
+		 SELECT DISTINCT gruppoZP.desc_breve ||' - '|| upper(orgNoc.desc_breve) AS desc_breve,
+		 		gruppoZP.id_gruppo_zona_protetta,  
+                gruppoZP.desc_estesa 
+           FROM car_d_gruppo_zona_protetta gruppoZP 
+          INNER JOIN car_d_zona_protetta zonaProtetta ON zonaProtetta.id_gruppo_zona_protetta =  gruppoZP.id_gruppo_zona_protetta 
+          INNER JOIN car_d_org_nocivo orgNoc ON orgNoc.id_org_nocivo = zonaProtetta.id_org_nocivo
+          WHERE gruppoZP.fine_validita is null 
+            AND zonaProtetta.fine_validita is null  
+            AND gruppoZP.desc_breve !='GENERIC'          
+       ORDER BY 1 
+	</select>
+	
+	<select id="getListaMaterialiByIdTipoAttivita" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDMateriale">
+		 SELECT materiale.id_materiale,
+		 		materiale.desc_estesa
+           FROM car_r_tipo_attivita_materiale attivitaMateriale 
+           INNER JOIN car_d_materiale materiale ON materiale.id_materiale = attivitaMateriale.id_materiale 
+          WHERE id_tipo_attivita = #{idTipoAttivita}
+       ORDER BY desc_estesa 
+	</select>
+	
+	<select id="isTipoGenereFamiglia" parameterType="java.lang.String" resultType="java.lang.String">
+		 SELECT lingua_genere.tipo_genere_famiglia
+           FROM car_r_lingua_genere lingua_genere
+     INNER JOIN car_d_lingua lingua_gen ON lingua_genere.id_lingua = lingua_gen.id_lingua
+          WHERE upper(lingua_genere.denom_genere) = upper(#{denomGenere,jdbcType=VARCHAR}) 
+            AND upper(lingua_gen.cod_lingua) = 'LA'
+            AND lingua_genere.tipo_genere_famiglia = 'S'
+	</select>
+	<select id="getListaIspettori" resultType="it.aizoon.ersaf.dto.DomandaDto">
+     select case when tipo_ispettore = 'I' then 
+		 			ctu.cognome || ' ' || ctu.nome || ' ' || cti.numero_tessera  || ' (Ispettore)'
+				 when tipo_ispettore = 'A'then 
+		 			ctu.cognome || ' ' || ctu.nome || ' ' || cti.numero_tessera  || ' (Agente)'
+				end descIspettore , cti.id_ispettore
+	 from car_t_ispettore cti
+	 inner join car_t_utente ctu on ctu.id_utente =cti.id_utente 
+	 where 
+  		cti.attivo = true
+  		and cti.data_fine is null
+	 order by ctu.cognome, ctu.nome
+	</select>
+		
+	<select id="getListaCentriAziendali" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.CentroAziendaleDto">
+	  select distinct
+		  centroAz.id_centro_aziendale,
+		  centroAz.id_spedizioniere,
+		  upper(centroAz.denominazione) as denominazione,
+		  upper(comune.denom_comune) as denomComune,
+		  upper(centroAz.indirizzo) as indirizzo,
+		  centroAz.id_stato_azienda,
+		  upper(statoAz.desc_estesa) as descrStatoAzienda, 
+		  centroAz.cod_centro_aziendale,
+		  cap,
+		  (CASE WHEN crdca.id_domanda IS NULL and ctsp.id_sito_produzione IS NULL and ctvu.id_voce_utente IS NULL and ctc.id_controllo IS NULL THEN true ELSE false END) AS flEliminabile
+		from 
+		  car_t_centro_aziendale centroAz
+		  inner join car_d_stato_azienda statoAz on centroAz.id_stato_azienda = statoAz.id_stato_azienda 
+		  inner join car_d_comune comune on comune.id_comune = centroAz.id_comune 
+		  left join car_r_domanda_centro_az crdca on crdca.id_centro_aziendale = centroAz.id_centro_aziendale 
+		  left join car_t_sito_produzione ctsp on ctsp.id_centro_aziendale = centroAz.id_centro_aziendale 
+		  left join car_t_voce_utente ctvu on ctvu.id_centro_aziendale = centroAz.id_centro_aziendale 
+		  left join car_t_controllo ctc on ctc.id_centro_aziendale = centroAz.id_centro_aziendale 
+		where 
+		  centroAz.id_spedizioniere = #{idSpedizioniere}
+		order by upper(comune.denom_comune), upper(centroAz.denominazione), centroAz.cod_centro_aziendale, upper(centroAz.indirizzo), 
+				 centroAz.id_stato_azienda, upper(statoAz.desc_estesa), centroAz.id_centro_aziendale, centroAz.id_spedizioniere	  
+	</select>
+	
+	<select id="getListaModuliComunicazione" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.ModuloDTO">
+	 SELECT tipo_modulo.id_tipo_modulo,
+		tipo_modulo.nome_modulo,
+		tipo_modulo.desc_modulo,
+		tipo_modulo.nome_file,
+		modulo.id_modulo
+		FROM car_t_domanda ctd
+		INNER JOIN car_r_tipo_com_modulo com_modulo	ON ctd.id_tipo_comunicazione = com_modulo.id_tipo_comunicazione	AND com_modulo.fine_validita IS null
+		INNER JOIN car_d_tipo_modulo tipo_modulo ON com_modulo.id_tipo_modulo =	tipo_modulo.id_tipo_modulo AND tipo_modulo.fine_validita IS NULL
+		LEFT OUTER JOIN car_t_modulo modulo	ON ctd.id_domanda = modulo.id_domanda AND tipo_modulo.id_tipo_modulo = modulo.id_tipo_modulo
+		WHERE ctd.id_domanda = #{idDomanda}
+		ORDER BY tipo_modulo.id_tipo_modulo
+	</select>
+	
+	<select id="getListaNormeVerbale" resultType="it.aizoon.ersaf.dto.generati.CarDNormaVerbale">
+	 	SELECT 
+			id_norma_verbale, 
+			desc_breve, 
+			desc_estesa 
+		FROM 
+			car_d_norma_verbale
+		WHERE 
+			data_fine_validita  is null
+	</select>
+	
+	<select id="getListaTipologiaSementi" resultType="it.aizoon.ersaf.dto.generati.CarDTipologiaSemente">
+	 	SELECT 
+			id_tipologia_semente, 
+			desc_breve, 
+			desc_estesa 
+		FROM 
+			car_d_tipologia_semente
+		WHERE 
+			data_fine_validita  is null
+	</select>
+	
+	<select id="getListaTipiRespAzienda" resultType="it.aizoon.ersaf.dto.generati.CarDTipoRespAzienda">
+	 	SELECT 
+			id_tipo_resp_azienda, 
+			desc_breve, 
+			desc_estesa 
+		FROM 
+			CAR_D_TIPO_RESP_AZIENDA
+		WHERE 
+			data_fine_validita  is null
+	</select>
+	
+	
+	<select id="getListTipologieControlli" resultType="it.aizoon.ersaf.dto.generati.CarDTipologiaControllo">
+	 	SELECT 
+			id_tipologia_controllo, 
+			desc_breve, 
+			desc_estesa 
+		FROM 
+			car_d_tipologia_controllo
+		WHERE 
+			data_fine_validita  is null
+		AND id_tipologia_controllo != 4	
+	</select>
+	
+	<select id="getGeneriByIdOrgNocivo" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.CodeDescriptionDTO">
+	   select distinct
+		  linguaGenere.id_genere as id,
+		  linguaGenere.denom_genere as descr
+		from 
+		  car_d_org_nocivo orgNoc
+			inner join car_d_zona_protetta zonaProt on zonaProt.id_org_nocivo = orgNoc.id_org_nocivo 
+			inner join car_r_lingua_genere linguaGenere ON zonaProt.id_genere = linguaGenere.id_genere
+			inner join car_d_lingua lingua ON linguaGenere.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = upper('la')
+		where 
+		  zonaProt.id_org_nocivo = #{idOrganismoNocivo}
+		order by linguaGenere.denom_genere asc
+	</select>
+	
+	<select id="getSpecieByIdGeneri" parameterType="java.util.ArrayList" resultType="it.aizoon.ersaf.dto.CodeDescriptionDTO">	
+	   select distinct
+		  linguaSpecie.id_specie as id, 
+		  linguaSpecie.denom_specie as descr
+		from 
+		  car_r_lingua_specie linguaSpecie
+			inner join car_d_lingua lingua ON linguaSpecie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = upper('la')
+			left outer join car_d_zona_protetta zonaProt on zonaProt.id_specie = linguaSpecie.id_specie --- ATTENZIONE : SU CAR_D_ZONA_PROTETTA NON ABBIAMO TUTTI I MAPPING DELLE SPECIE
+			inner join car_d_specie cds on cds.id_specie = 	linguaSpecie.id_specie
+		<where>
+			cds.id_genere in 
+			<foreach item="item" index="index" collection="list"
+             open="(" separator="," close=")">#{item}
+   			 </foreach>
+		</where>		  
+		order by linguaSpecie.denom_specie asc
+	</select>
+	
+	
+	<select id="getListaIspettoriByTipoIspettore" parameterType="java.lang.String" resultType="it.aizoon.ersaf.dto.CodeDescriptionDTO">
+		select 
+		   case 
+		   when tipo_ispettore = 'I' then 
+		 	ctu.cognome || ' ' || ctu.nome || ' ' || cti.numero_tessera  || ' (Ispettore)'
+		   when tipo_ispettore = 'A'then 
+		 	ctu.cognome || ' ' || ctu.nome || ' ' || cti.numero_tessera  || ' (Agente)'
+		   end descr ,
+		   cti.id_ispettore as id
+		 from 
+		   car_t_ispettore cti
+		   inner join car_t_utente ctu on ctu.id_utente =cti.id_utente 
+		 where 
+	  		cti.attivo = true
+	  		and cti.data_fine is null
+	  		and tipo_ispettore = #{tipoIspettore}
+		 order by 
+		   ctu.cognome, ctu.nome
+	</select>
+	
+	<select id="getListaTipologiaSementiByIdVersioneControllo" parameterType="java.lang.Long"  resultType="it.aizoon.ersaf.dto.generati.CarDTipologiaSemente">
+	 	SELECT 
+			id_tipologia_semente, 
+			desc_breve, 
+			desc_estesa 
+		FROM 
+			car_d_tipologia_semente
+		WHERE 
+			data_fine_validita  is null
+		 AND id_versione_controllo = #{idVersioneControllo}
+	ORDER BY 1	
+	</select>
+	
+	
+</mapper>

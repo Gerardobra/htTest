@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.ComunicazioneMapper">
+  
+  <resultMap id="getDettaglioComunicazioneResultMap" type="it.aizoon.ersaf.dto.ComunicazioneDto">
+    <id column="id_comunicazione" jdbcType="BIGINT" property="idComunicazione" />
+    <result column="id_tipo_comunicazione" jdbcType="SMALLINT" property="idTipoComunicazione" />
+    <result column="desc_tipo_comunicazione" jdbcType="VARCHAR" property="descTipoComunicazione" />
+    <result column="id_stato_comunicazione" jdbcType="SMALLINT" property="idStatoComunicazione" />
+    <result column="desc_stato_comunicazione" jdbcType="VARCHAR" property="descStatoComunicazione" />
+    <result column="id_spedizioniere" jdbcType="INTEGER" property="idSpedizioniere" />
+    <result column="denom_spedizioniere" jdbcType="VARCHAR" property="denomSpedizioniere" />
+    <result column="id_utente_inserimento" jdbcType="SMALLINT" property="idUtenteInserimento" />
+    <result column="data_inserimento" jdbcType="DATE" property="dataInserimento" />
+    <result column="id_utente_aggiornamento" jdbcType="SMALLINT" property="idUtenteAggiornamento" />
+    <result column="data_aggiornamento" jdbcType="DATE" property="dataAggiornamento" />
+    <result column="utente_cognome" jdbcType="VARCHAR" property="utenteCognome" />
+    <result column="utente_nome" jdbcType="VARCHAR" property="utenteNome" />
+    <result column="utente_email" jdbcType="VARCHAR" property="utenteEmail" /> 
+    <result column="codice_rup" jdbcType="VARCHAR" property="codiceRup" />   
+    <result column="codice_ruop" jdbcType="VARCHAR" property="codiceRuop" />
+    <association property="centroAziendale" javaType="it.aizoon.ersaf.dto.CentroAziendaleDto">
+      <result column="id_centro_aziendale" jdbcType="SMALLINT" property="idCentroAziendale" />
+      <result column="desc_centro_aziendale" jdbcType="VARCHAR" property="denominazione" />
+      <result column="indirizzo_centro_aziendale" jdbcType="VARCHAR" property="indirizzo" />
+      <result column="frazione_centro_aziendale" jdbcType="VARCHAR" property="frazione" />
+      <result column="denom_comune_centro_aziendale" jdbcType="VARCHAR" property="denomComune" />
+      <result column="sigla_provincia_centro_aziendale" jdbcType="VARCHAR" property="siglaProvincia" /> 
+      <result column="cod_centro_aziendale" jdbcType="VARCHAR" property="codCentroAziendale" />     
+    </association>            
+   <collection property="listaGeneri" ofType="it.aizoon.ersaf.dto.GenereSpecieDTO">
+      <result column="id_genere" jdbcType="INTEGER" property="idGenere" />
+      <result column="denom_genere" jdbcType="VARCHAR" property="denomGenere" />      
+      <result column="id_specie" jdbcType="INTEGER" property="idSpecie" />
+      <result column="denom_specie" jdbcType="VARCHAR" property="denomSpecie" />        
+      <result column="numero_piante" jdbcType="INTEGER" property="numeroPiante" />      
+    </collection> 
+  </resultMap>
+
+  <select id="getElencoComunicazioniRespinte" parameterType="map" resultType="it.aizoon.ersaf.dto.ComunicazioneDto">
+    SELECT comunicazione.id_comunicazione,
+       comunicazione.id_tipo_comunicazione,
+       tipo.desc_breve desc_tipo_comunicazione,
+       comunicazione.id_centro_aziendale,
+       comunicazione.id_stato_comunicazione,
+       stato.desc_stato desc_stato_comunicazione,
+       comunicazione.id_utente_inserimento,
+       comunicazione.data_inserimento,
+       comunicazione.id_utente_aggiornamento,
+       comunicazione.data_aggiornamento,
+       comunicazione.motivazione
+    FROM car_t_comunicazione comunicazione
+      INNER JOIN car_d_tipo_comunicazione tipo 
+        ON comunicazione.id_tipo_comunicazione = tipo.id_tipo_comunicazione
+      INNER JOIN car_d_stato_comunicazione stato 
+        ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+    WHERE comunicazione.id_utente_inserimento = #{idUtente}
+    AND data_aggiornamento > #{dataLimite}
+    AND comunicazione.id_stato_comunicazione IN 
+    <foreach item="item" index="index" collection="listaStati" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+    ORDER BY DATA_INSERIMENTO DESC NULLS LAST
+  </select>
+  
+  <select id="getElencoComunicazioni" parameterType="it.aizoon.ersaf.form.RicercaComunicazioneForm" resultType="it.aizoon.ersaf.dto.ComunicazioneDto">
+    SELECT comunicazione.id_comunicazione,
+       comunicazione.id_tipo_comunicazione,
+       tipo.desc_breve desc_tipo_comunicazione,
+       comunicazione.id_stato_comunicazione,
+       stato.desc_stato desc_stato_comunicazione,
+       comunicazione.id_centro_aziendale,
+       centro_aziendale.denominazione desc_centro_aziendale,
+       centro_aziendale.id_spedizioniere,
+       spedizioniere.denom_spedizioniere,
+       comunicazione.data_inserimento,
+       comunicazione.id_utente_inserimento,
+       comunicazione.data_aggiornamento,
+       comunicazione.id_utente_aggiornamento,
+       centro_aziendale.cod_centro_aziendale
+		FROM car_t_comunicazione comunicazione
+		  INNER JOIN car_d_tipo_comunicazione tipo 
+		    ON comunicazione.id_tipo_comunicazione = tipo.id_tipo_comunicazione
+		  INNER JOIN car_d_stato_comunicazione stato 
+		    ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+		  INNER JOIN car_t_centro_aziendale centro_aziendale 
+		    ON comunicazione.id_centro_aziendale = centro_aziendale.id_centro_aziendale
+		  INNER JOIN car_t_spedizioniere spedizioniere 
+		    ON centro_aziendale.id_spedizioniere = spedizioniere.id_spedizioniere
+		<where>
+		  <if test="spedizioniere != null">
+        <bind name="denom_spedizioniere" value="'%' + spedizioniere + '%'" />
+         AND UPPER(spedizioniere.denom_spedizioniere) like UPPER(#{denom_spedizioniere})
+      </if>
+      <if test="idTipoComunicazione != null">
+         AND comunicazione.id_tipo_comunicazione = #{idTipoComunicazione}
+      </if>
+      <if test="idStatoComunicazione != null">
+         AND comunicazione.id_stato_comunicazione = #{idStatoComunicazione}
+      </if>
+      <if test="dataCreazione != null">
+         AND comunicazione.data_inserimento = #{dataCreazione}
+      </if>
+		  <if test="idUtenteInsert != null">
+        AND 
+        spedizioniere.id_spedizioniere in (
+	    select
+			id_spedizioniere
+		from
+			car_t_utente
+		where
+			id_utente = #{idUtenteInsert}		
+		union 
+		  select crus.id_spedizioniere 
+		  from car_r_utente_spedizionieri crus 
+		  where crus.id_utente = #{idUtenteInsert}
+		)
+      </if>
+		</where>
+		ORDER BY comunicazione.data_inserimento DESC LIMIT 500
+  </select>
+  
+  <select id="getElencoCentriAziendali" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.CentroAziendaleDto">
+    SELECT centro.id_centro_aziendale,
+       centro.cod_centro_aziendale,
+       centro.denominazione,
+       centro.codice_fiscale,
+       centro.id_comune,
+       comune.denom_comune,
+       provincia.sigla_provincia,
+       centro.cap,
+       centro.frazione,
+       centro.indirizzo,
+       centro.telefono,
+       centro.pec,
+       centro.email,
+       centro.area_delimitata,
+       centro.id_spedizioniere,
+       centro.fl_principale,
+       centro.id_utente_insert,
+       centro.data_insert,
+       centro.id_utente_update,
+       centro.data_update,
+       centro.id_stato_azienda,
+       stato.desc_estesa as descrStatoAzienda
+    FROM car_t_centro_aziendale centro
+      LEFT JOIN car_d_comune comune 
+        ON centro.id_comune = comune.id_comune
+      LEFT JOIN car_d_provincia provincia 
+        ON comune.id_provincia = provincia.id_provincia
+      INNER JOIN car_d_stato_azienda stato 
+      	ON stato.id_stato_azienda = centro.id_stato_azienda 
+    WHERE id_spedizioniere = #{idSpedizioniere,jdbcType=SMALLINT}
+    ORDER BY denominazione
+  </select>
+  
+  <select id="isUtenteAbilitatoModificaComunicazione" resultType="java.lang.Boolean">
+    SELECT bool_or(CASE 
+      WHEN utente_gruppo.id_utente = comunicazione.id_utente_inserimento 
+        AND comunicazione.id_stato_comunicazione IN (1, 4) 
+        THEN true 
+      ELSE gruppo_stato.richiesta_modificabile END)
+    FROM car_t_comunicazione comunicazione
+      INNER JOIN car_r_gruppo_stato_com gruppo_stato
+        ON comunicazione.id_stato_comunicazione = gruppo_stato.id_stato_comunicazione
+      INNER JOIN car_r_utente_gruppo utente_gruppo
+        USING (id_gruppo)
+    WHERE utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT}
+    AND comunicazione.id_comunicazione = #{idComunicazione,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getDettaglioComunicazione" parameterType="java.lang.Long" resultMap="getDettaglioComunicazioneResultMap">
+    SELECT comunicazione.id_comunicazione,
+       comunicazione.id_tipo_comunicazione,
+       tipo.desc_breve desc_tipo_comunicazione,
+       comunicazione.id_stato_comunicazione,
+       stato.desc_stato desc_stato_comunicazione,
+       comunicazione.id_centro_aziendale,
+       centro_aziendale.denominazione desc_centro_aziendale,
+       centro_aziendale.indirizzo indirizzo_centro_aziendale,
+       centro_aziendale.frazione frazione_centro_aziendale,
+       centro_aziendale.cod_centro_aziendale,
+       comune_centro_aziendale.denom_comune denom_comune_centro_aziendale,
+       provincia_centro_aziendale.sigla_provincia sigla_provincia_centro_aziendale,
+       centro_aziendale.id_spedizioniere,
+       spedizioniere.denom_spedizioniere,
+       comunicazione.id_utente_inserimento,
+       comunicazione.data_inserimento,
+       comunicazione.id_utente_aggiornamento,
+       comunicazione.data_aggiornamento,
+       lingua_genere.id_genere,
+       lingua_genere.denom_genere,
+       specie.id_specie,
+       lingua_specie.denom_specie,
+       utente.cognome utente_cognome,
+       utente.nome utente_nome,
+       utente.email utente_email,
+       comunicazione_specie.numero_piante,
+       spedizioniere.codice_rup,
+       spedizioniere.codice_ruop
+    FROM car_t_comunicazione comunicazione
+      INNER JOIN car_D_tipo_comunicazione tipo 
+        ON comunicazione.id_tipo_comunicazione = tipo.id_tipo_comunicazione
+      INNER JOIN car_d_stato_comunicazione stato 
+        ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+      INNER JOIN car_t_centro_aziendale centro_aziendale 
+        ON comunicazione.id_centro_aziendale = centro_aziendale.id_centro_aziendale
+      LEFT OUTER JOIN car_d_comune comune_centro_aziendale
+        ON centro_aziendale.id_comune = comune_centro_aziendale.id_comune
+      LEFT OUTER JOIN car_d_provincia provincia_centro_aziendale
+        ON comune_centro_aziendale.id_provincia = provincia_centro_aziendale.id_provincia
+      LEFT OUTER JOIN car_T_spedizioniere spedizioniere 
+        ON centro_aziendale.id_spedizioniere = spedizioniere.id_spedizioniere
+      LEFT OUTER JOIN car_r_comunicazione_specie comunicazione_specie 
+        ON comunicazione.id_comunicazione = comunicazione_specie.id_comunicazione
+      LEFT OUTER JOIN car_d_specie specie 
+        ON comunicazione_specie.id_specie = specie.id_specie
+      LEFT OUTER JOIN (
+        SELECT lingua_specie_inner.id_specie,
+               lingua_specie_inner.denom_specie
+        FROM car_r_lingua_specie lingua_specie_inner
+          INNER JOIN car_d_lingua lingua
+            ON lingua_specie_inner.id_lingua = lingua.id_lingua
+            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+      ) lingua_specie 
+        ON specie.id_specie = lingua_specie.id_specie
+      LEFT OUTER JOIN (
+        SELECT lingua_genere_inner.id_genere,
+               lingua_genere_inner.denom_genere
+        FROM car_r_lingua_genere lingua_genere_inner
+          INNER JOIN car_d_lingua lingua
+            ON lingua_genere_inner.id_lingua = lingua.id_lingua
+            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+      ) lingua_genere 
+        ON comunicazione_specie.id_genere = lingua_genere.id_genere
+      INNER JOIN car_t_utente utente
+        ON comunicazione.id_utente_inserimento = utente.id_utente
+    WHERE comunicazione.id_comunicazione = #{idComunicazione}
+    ORDER BY denom_genere,
+             CASE WHEN POSITION(' sp.' IN denom_specie) > 0 THEN 0 ELSE 1 END,
+             denom_specie;
+  </select>
+  
+  <select id="getListaStatiComunicazioneSuccessivi" resultType="it.aizoon.ersaf.dto.generati.CarDStatoComunicazione">
+    SELECT DISTINCT stato.id_stato_comunicazione, stato.desc_stato
+    FROM car_t_comunicazione AS comunicazione
+      INNER JOIN car_r_gruppo_stato_com_succ gruppo_stato
+        ON comunicazione.id_stato_comunicazione = gruppo_stato.id_stato_comunicazione
+      INNER JOIN car_r_utente_gruppo utente_gruppo 
+        USING (id_gruppo) 
+      INNER JOIN car_d_stato_comunicazione stato 
+        ON gruppo_stato.id_stato_com_succ = stato.id_stato_comunicazione 
+    WHERE comunicazione.id_comunicazione = #{idComunicazione,jdbcType=BIGINT}
+    AND ((comunicazione.id_utente_inserimento = #{idUtente,jdbcType=BIGINT} AND id_gruppo IN (10)) 
+      OR utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT})
+    ORDER BY id_stato_comunicazione 
+  </select>
+  
+  <select id="lockComunicazione" resultType="java.lang.Long" parameterType="java.lang.Long">
+    SELECT id_stato_comunicazione
+    FROM car_t_comunicazione
+    WHERE id_comunicazione = #{idComunicazione,jdbcType=BIGINT}
+    FOR UPDATE
+  </select>
+  
+  <select id="getElencoMailInvioMassivo" resultType="it.aizoon.ersaf.dto.generati.CarTInvioMailUtente">
+    select 
+		id_invio_mail_utente, id_utente, id_spedizioniere, email, pec, fl_mail_inviata, 
+	    data_mail_inviata, esito_invio, note, data_inserimento
+	from 
+	  caronte.car_t_invio_mail_utente 
+	where  	
+	  (data_mail_inviata is null and fl_mail_inviata='no' )  
+	  or 	  
+	  (data_mail_inviata is not null and fl_mail_inviata ='yes' and esito_invio = 'KO')
+	order by data_inserimento
+  </select>
+  
+    <select id="getTipiComunicazioneByIdUtente" resultType="it.aizoon.ersaf.dto.generati.CarDTipoComunicazione">   
+    SELECT    
+         tipoCom.ID_TIPO_COMUNICAZIONE, 
+         tipoCom.DESC_BREVE, 
+         tipoCom.DESC_ESTESA, 
+         tipoCom.ISTRUZIONI, 
+         tipoCom.ABILITATO, 
+         tipoCom.QUALITA_DI, 
+         tipoCom.INIZIO_VALIDITA, 
+         tipoCom.FINE_VALIDITA
+    FROM CAR_D_TIPO_COMUNICAZIONE tipoCom      
+       INNER JOIN CAR_R_TIPO_COM_GRUPPO tipoComGruppo ON tipoCom.ID_TIPO_COMUNICAZIONE = tipoComGruppo.ID_TIPO_COMUNICAZIONE
+       INNER JOIN CAR_R_UTENTE_GRUPPO utenteGruppo ON tipoComGruppo.ID_GRUPPO = utenteGruppo.ID_GRUPPO 
+       INNER JOIN CAR_R_TIPO_COM_SEZIONE tipoComSez ON tipoCom.ID_TIPO_COMUNICAZIONE = tipoComSez.ID_TIPO_COMUNICAZIONE
+    WHERE tipoCom.FINE_VALIDITA is null
+         AND tipoComGruppo.FINE_VALIDITA is null
+         AND tipoComSez.FINE_VALIDITA is null   
+         AND utenteGruppo.ID_UTENTE = #{idUtente,jdbcType=DECIMAL}
+         AND abilitato = true
+         AND tipoComSez.ID_ASSOCIAZIONE_SEZIONE = #{idAssociazioneSezione,jdbcType=DECIMAL}    
+    ORDER BY tipoCom.ID_TIPO_COMUNICAZIONE 
+  </select>
+  
+  <select id="getListaSpedizionieriByDenomRuop" resultType="it.aizoon.ersaf.dto.generati.CarTSpedizioniere">   
+    SELECT  
+        sped.id_spedizioniere, 
+        upper(COALESCE(sped.codice_ruop ||' - ' || sped.denom_spedizioniere, sped.denom_spedizioniere )) as denomSpedizioniere
+      FROM CAR_T_SPEDIZIONIERE sped
+       JOIN CAR_R_SPEDIZ_ASSOC_SEZIONE spedAssocSezione ON spedAssocSezione.id_spedizioniere = sped.id_spedizioniere 
+      <bind name="spedizioniere_ruop" value="'%' + spedizioniereRuop + '%'" />
+      WHERE spedAssocSezione.id_associazione_sezione = #{idAssociazioneSezione,jdbcType=BIGINT}
+        AND (upper(sped.denom_spedizioniere) LIKE upper(#{spedizioniere_ruop,jdbcType=VARCHAR})
+         OR upper(sped.codice_ruop) LIKE upper(#{spedizioniere_ruop,jdbcType=VARCHAR}))
+  </select>
+  
+  <select id="getListaSpedizionieriByIdUtente" resultType="it.aizoon.ersaf.dto.generati.CarTSpedizioniere">
+	  select
+	    sped.id_spedizioniere,
+	    upper(COALESCE(sped.codice_ruop ||' - ' || sped.denom_spedizioniere, sped.denom_spedizioniere, sped.cognome ||' '|| sped.nome)) as denomSpedizioniere 
+	  from 
+	    car_t_utente utente
+	    join car_t_spedizioniere sped on sped.id_spedizioniere  = utente.id_spedizioniere 	    
+	  where 
+	    utente.id_utente = #{idUtente,jdbcType=DECIMAL}   
+	union
+  	  select
+     	s.id_spedizioniere,
+	 	upper(COALESCE(s.codice_ruop ||' - ' || s.denom_spedizioniere, s.denom_spedizioniere, s.cognome ||' '|| s.nome )) as denomSpedizioniere
+   	  from 
+     	car_r_utente_spedizionieri utSped 
+     	inner join car_t_spedizioniere s on s.id_spedizioniere = utSped.id_spedizioniere 
+   	  where 
+    	utSped.id_utente = #{idUtente,jdbcType=DECIMAL}
+ 	  order by denomSpedizioniere
+  </select>
+  
+  
+  
+</mapper>

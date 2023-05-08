@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+       Copyright 2013-2017 the original author or authors.
+
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+
+-->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.AutenticazioneMapper">
+
+  <sql id="userColumns">
+    id_utente as id,  
+    email as username,
+    nome,
+    cognome,
+    id_spedizioniere,
+    abilitato,
+    (SELECT bool_or(ruolo.superuser) 
+      FROM car_r_utente_gruppo utente_gruppo
+        INNER JOIN car_d_gruppo gruppo
+          USING (id_gruppo)
+        INNER JOIN car_d_ruolo ruolo
+          USING (id_ruolo)
+      WHERE utente_gruppo.id_utente = utente.id_utente
+    ) superuser,
+    (SELECT id_ispettore
+      FROM car_t_ispettore
+      WHERE id_utente = utente.id_utente
+    ) AS id_ispettore,
+    (SELECT DISTINCT gruppo.id_ruolo
+      FROM car_r_utente_gruppo utente_gruppo
+        INNER JOIN car_d_gruppo gruppo
+          USING (id_gruppo)
+      WHERE utente_gruppo.id_utente = utente.id_utente) AS id_ruolo,
+     (SELECT autoriz_pagam_posticip FROM car_t_spedizioniere WHERE id_spedizioniere = utente.id_spedizioniere) as autorizPagamPosticip 
+  </sql>
+  
+	<select id="getUtenteByCredenziali" resultType="it.aizoon.ersaf.dto.UtenteDTO">
+		SELECT 
+		<include refid="userColumns" />
+		FROM car_t_utente utente
+		WHERE upper(email) = upper(#{username}) AND password = #{password}
+	</select>
+	
+	<select id="getUtenteByCredenzialiEnc" resultType="it.aizoon.ersaf.dto.UtenteDTO">
+		SELECT password,
+		<include refid="userColumns" />
+		FROM car_t_utente utente
+		WHERE upper(email) = upper(#{username})
+	</select>
+	
+	<select id="getUtenteByUsername" resultType="it.aizoon.ersaf.dto.UtenteDTO">
+    SELECT 
+    <include refid="userColumns" />
+		FROM car_t_utente utente
+		WHERE upper(email) = upper(#{username})
+	</select>
+
+	<select id="getGrantByIdUtente" resultType="it.aizoon.ersaf.dto.GrantDTO">
+	  SELECT 
+      q1.id_utente as id, 
+      q1.grant_type as grantType, 
+      q1.codice as codice, 
+      q1.descrizione as descrizione 
+    FROM (
+      --- credenziali di login
+      SELECT
+        'CREDENTIALS' as grant_type,
+        id_utente, 
+        email /*|| '@PNDUAA'*/ AS codice,
+        nome || ' ' || cognome AS descrizione
+      FROM
+        car_t_utente WHERE id_utente = #{idUtente}
+      UNION
+      --- autorizzazioni associate (FLATTENED)
+      SELECT 
+        'AUTHORIZATION' as grant_type,
+        id_autorizzazione, 
+        'ROLE_' || cod_autorizzazione, 
+        denom_autorizzazione 
+      FROM car_d_autorizzazione WHERE id_autorizzazione IN (
+        SELECT DISTINCT(id_autorizzazione) FROM car_r_gruppo_autorizzazione WHERE id_gruppo IN (
+          WITH RECURSIVE gruppi(id_gruppo_padre, id_gruppo) AS (
+              SELECT id_gruppo_padre, id_gruppo FROM car_d_gruppo WHERE id_gruppo IN (
+                SELECT id_gruppo FROM car_r_utente_gruppo r WHERE r.id_utente = (
+                  SELECT id_utente FROM car_t_utente WHERE id_utente = #{idUtente}
+                )
+              )
+          UNION ALL
+              SELECT p.id_gruppo_padre, p.id_gruppo FROM gruppi pr, car_d_gruppo p WHERE pr.id_gruppo_padre = p.id_gruppo
+            )
+          SELECT DISTINCT(id_gruppo) FROM gruppi ORDER BY id_gruppo ASC
+        )
+      )
+      UNION
+      SELECT
+        'GROUP' as grant_type,
+        id_gruppo, 
+        'GROUP_' || cod_ruolo as codice, 
+        denom_ruolo 
+      FROM (
+        SELECT gruppo.id_gruppo, ruolo.cod_ruolo, ruolo.denom_ruolo 
+        FROM car_d_gruppo gruppo 
+          INNER JOIN car_d_ruolo ruolo 
+            ON gruppo.id_ruolo = ruolo.id_ruolo 
+        WHERE id_gruppo IN (
+          WITH RECURSIVE gruppi(id_gruppo_padre, id_gruppo) AS (
+              SELECT id_gruppo_padre, id_gruppo FROM car_d_gruppo WHERE id_gruppo IN (
+                SELECT id_gruppo FROM car_r_utente_gruppo r WHERE r.id_utente = (
+                  SELECT id_utente FROM car_t_utente WHERE id_utente = #{idUtente}
+                )
+              )
+          UNION ALL 
+          SELECT p.id_gruppo_padre, p.id_gruppo FROM gruppi pr, car_d_gruppo p WHERE pr.id_gruppo_padre = p.id_gruppo
+            )
+          SELECT DISTINCT(id_gruppo) FROM gruppi ORDER BY id_gruppo ASC
+        ) 
+      ) q0
+    ) q1
+    ORDER BY grant_type, id, codice, descrizione
+	</select>
+	
+	<select id="getTokenBySeries" resultType="it.aizoon.ersaf.dto.LoginTokenDTO">
+		SELECT 
+			username,
+			series,
+			token,
+			last_used as lastUsed
+		FROM 
+			car_t_token_login 
+		WHERE 
+			series = #{series,jdbcType=CHAR}
+	</select>
+	
+	<insert id="insertToken" parameterType="it.aizoon.ersaf.dto.LoginTokenDTO">
+		INSERT INTO
+			car_t_token_login
+		( 
+			username,
+			series,
+			token,
+			last_used
+		)
+		VALUES
+		(
+			#{username,jdbcType=CHAR},
+			#{series,jdbcType=CHAR},
+			#{token,jdbcType=CHAR},
+			#{lastUsed,jdbcType=DATE}
+		)
+	</insert>
+	
+	<update id="updateTokenBySeries" parameterType="it.aizoon.ersaf.dto.LoginTokenDTO">
+		UPDATE
+			car_t_token_login
+		SET
+			token = #{token,jdbcType=CHAR},
+			last_used = #{lastUsed,jdbcType=DATE}
+		WHERE
+			series = #{series}
+	</update>
+	
+	<delete id="removeTokenByUsername">
+		DELETE FROM
+			car_t_token_login
+		WHERE
+			username = #{username}
+	</delete>
+	
+</mapper>

@@ -1,0 +1,844 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.RichiestaMapper">
+  <resultMap id="getTariffeResultMap" type="it.aizoon.ersaf.dto.TariffaDto">
+    <id column="id_tariffa" jdbcType="INTEGER" property="idTariffa" />
+    <result column="incremento_quantita" jdbcType="INTEGER" property="incrementoQuantita" />
+    <result column="incremento_tariffa" jdbcType="NUMERIC" property="incrementoTariffa" />
+    <result column="massimale_tariffa" jdbcType="NUMERIC" property="massimaleTariffa" />
+    <collection property="listaRange" ofType="it.aizoon.ersaf.dto.generati.CarDRangeTariffa">
+      <id column="id_range_tariffa" jdbcType="NUMERIC" property="idRangeTariffa" />
+	    <result column="tariffa" jdbcType="NUMERIC" property="tariffa" />
+	    <result column="quantita_limite_inf" jdbcType="INTEGER" property="quantitaLimiteInf" />
+	    <result column="quantita_limite_sup" jdbcType="INTEGER" property="quantitaLimiteSup" />
+    </collection>
+  </resultMap>
+  
+	<select id="getElencoRichieste" parameterType="it.aizoon.ersaf.form.RicercaRichiestaForm"	resultType="it.aizoon.ersaf.dto.RichiestaDto">
+		SELECT DISTINCT 
+		ctr.id_richiesta AS idRichiesta,
+		ctr.id_stato_richiesta AS idStatoRichiesta,
+		ctr.id_tipo_richiesta AS idTipoRichiesta,
+		cdtr.desc_tipo_richiesta AS descTipoRichiesta,
+		cdsr.desc_stato_richiesta AS statoRichiesta,
+		ctr.cod_richiesta AS numeroRichiesta,
+		cdud.denom_ufficio_doganale AS dogana,
+		UPPER(cts.denom_spedizioniere) AS spedizioniere,
+		ctr.data_inoltro AS dataInoltro,
+		ctr.data_partenza_merce,
+		ctr.data_esecuzione AS dataEsecuzione,
+		UPPER(ctr.identif_mezzo_trasporto) AS documentoMezzo,
+		coalesce(ctc.NUMERO_CERTIFICATO, UPPER(ctc.numero_certificato_manuale)) AS numeroCertificato,
+		UPPER(ctr.denom_mittente) AS mittente,
+		UPPER(ctr.denom_destinatario) AS destinatario,
+		ctr.data_insert
+		FROM car_t_richiesta ctr
+		LEFT JOIN car_d_stato_richiesta cdsr ON cdsr.id_stato_richiesta =		ctr.id_stato_richiesta
+		LEFT JOIN car_d_ufficio_doganale cdud ON cdud.id_ufficio_doganale =		ctr.id_ufficio_doganale_entrata
+		LEFT JOIN car_t_utente ctu ON ctu.id_utente = ctr.id_utente_insert
+		LEFT JOIN car_t_spedizioniere cts ON cts.id_spedizioniere =		ctu.id_spedizioniere
+		LEFT JOIN car_t_certificato ctc ON ctc.id_richiesta = ctr.id_richiesta
+		LEFT JOIN car_d_tipo_richiesta cdtr ON ctr.id_tipo_richiesta = cdtr.id_tipo_richiesta
+		<if test="idProvinciaMittente != null">
+		LEFT JOIN car_d_comune AS comune_ita ON ctr.id_comune_ita = comune_ita.id_comune
+		</if>
+		<if test="idIspettoreFirmatario != null">
+    LEFT JOIN car_r_ispet_certif_contr AS ispettore_firmatario 
+      ON ctc.id_certificato = ispettore_firmatario.id_certificato 
+      AND ispettore_firmatario.id_tipo_controllo = ${@it.aizoon.ersaf.util.CaronteConstants@ID_TIPO_CONTROLLO_DOCUMENTALE}
+    </if>
+		<where>	
+			<if test="idStatoRichiesta != null">
+			   AND ctr.id_stato_richiesta = #{idStatoRichiesta}
+			</if>
+			<if test="codRichiesta != null">
+			   <bind name="cod_richiesta" value="'%' + codRichiesta + '%'" />
+			   AND ctr.cod_richiesta LIKE #{cod_richiesta}
+			</if>
+			<if test="codTipoRichiesta != null and codTipoRichiesta != '' ">
+			   AND cdtr.cod_tipo_richiesta = #{codTipoRichiesta}
+			</if>
+			<if test="codTipoRichiesta == null or codTipoRichiesta == '' ">
+			   AND cdtr.cod_tipo_richiesta IN ('EX','RI')
+			</if>
+      <if test="numeroCertificato != null">
+         <bind name="num_certificato" value="'%' + numeroCertificato + '%'" />
+			   AND coalesce(ctc.NUMERO_CERTIFICATO::char, ctc.numero_certificato_manuale) LIKE #{num_certificato}
+			</if>
+      <if test="idUfficioDoganaleEntrata != null">
+			   AND	cdud.id_ufficio_doganale = #{idUfficioDoganaleEntrata}
+			</if>
+      <if test="spedizioniere != null">
+        <bind name="denom_spedizioniere" value="'%' + spedizioniere + '%'" />
+			   AND UPPER(cts.denom_spedizioniere) like UPPER(#{denom_spedizioniere})
+			</if>
+      <if test="identifMezzoTrasporto != null">
+        <bind name="identif_mezzo_trasporto" value="'%' + identifMezzoTrasporto + '%'" />
+			   AND UPPER(ctr.identif_mezzo_trasporto) like UPPER (#{identif_mezzo_trasporto})
+			</if>
+      <if test="dataInoltro != null">
+			   AND ctr.data_inoltro = #{dataInoltro}
+			</if>
+      <if test="dataEsecuzione != null">
+			   AND ctr.data_esecuzione = #{dataEsecuzione}
+			</if>
+      <if test="denomMittente != null">
+        <bind name="denom_mittente" value="'%' + denomMittente + '%'" />
+			   AND UPPER(ctr.denom_mittente) like UPPER(#{denom_mittente})
+			</if>
+      <if test="denomDestinatario != null">
+        <bind name="denom_destinatario" value="'%' + denomDestinatario + '%'" />
+			   AND	UPPER(ctr.denom_destinatario) like UPPER (#{denom_destinatario})
+			</if>
+			<if test="idUtenteInsert != null">
+         AND ctu.id_spedizioniere = (SELECT id_spedizioniere FROM car_t_utente WHERE id_utente = #{idUtenteInsert})
+      </if>
+      <if test="idProvinciaMittente != null">
+        AND comune_ita.id_provincia = #{idProvinciaMittente}
+      </if>
+      <if test="idIspettoreFirmatario != null">
+        AND ispettore_firmatario.id_ispettore = #{idIspettoreFirmatario}
+      </if>
+		</where>
+		ORDER BY ctr.data_insert DESC
+		LIMIT 500
+	</select>
+	
+	<select id="getDettaglioRichiesta" parameterType="java.lang.Long"  resultType="it.aizoon.ersaf.dto.DettaglioRichiestaDto">
+    SELECT DISTINCT ctr.id_richiesta AS idRichiesta,
+       ctr.cod_richiesta AS codRichiesta,
+       ctr.id_tipo_richiesta AS idTipoRichiesta,
+       tipo_richiesta.desc_tipo_richiesta AS descTipoRichiesta,
+       ctr.id_utente_insert AS idUtenteInsert,
+       ctu.nome AS utenteNome,
+       ctu.cognome AS utenteCognome,
+       ctu.email AS utenteEmail,
+       ctr.id_stato_richiesta AS idStatoRichiesta,
+       cdsr.desc_stato_richiesta AS descStatoRichiesta,
+       ctr.note_dati_richiesta AS noteDatiRichiesta,
+       ctr.denom_mittente AS denomMittente,
+       ctr.indirizzo_mittente AS indirizzoMittente,
+       ctr.note_mittente_certif AS noteMittenteCertif,
+       ctr.id_nazione_mittente AS idNazioneMittente,
+       cdnm.denom_nazione AS denomNazioneMittente,
+       ctr.id_comune_ita AS idComuneIta,
+       cdc.denom_comune AS denomComuneIta,
+       provincia.id_provincia AS idProvincia,
+       provincia.denom_provincia AS denomProvincia,
+       ctr.denom_comune_est_destinatario AS denomComuneEstDestinatario,
+       ctr.denom_comune_est_mittente AS denomComuneEstMittente,
+       ctr.denom_destinatario AS denomDestinatario,
+       ctr.indirizzo_destinatario AS indirizzoDestinatario,
+       ctr.id_nazione_destinatario AS idNazioneDestinatario,
+       cdnd.denom_nazione AS denomNazioneDestinatario,
+       ctr.codice_rup_destinatario,
+       ctr.id_regione_rup_destinatario,
+       ctr.id_nazione_rup_destinatario,
+       nazione_rup.denom_nazione AS denomNazioneRupDestinatario,
+       ctr.codice_rup_mittente as codiceRupMittente,
+       ctr.id_nazione_rup_mittente as idNazioneRupMittente,
+       regione_dest.denom_regione AS descRegioneRupDestinatario,
+       ctr.id_ufficio_doganale_entrata AS idUfficioDoganaleEntrata,
+       cdud.denom_ufficio_doganale AS dogana,
+       ctr.id_ufficio_doganale_utilizzato AS idUfficioDoganaleUtilizzato,
+       dogana_utilizzato.denom_ufficio_doganale AS descUfficioDoganaleUtilizzato,
+       ctr.id_modo_trasporto AS idModoTrasporto,
+       cdmt.desc_modo_trasporto AS descModoTrasporto,
+       cdmt.desc_modo_trasporto_exp AS descModoTrasportoExp,
+       ctr.identif_mezzo_trasporto AS identifMezzoTrasporto,
+       ctr.punto_entrata_dichiarato AS puntoEntrataDichiarato,
+       ctr.id_nazione_prot_veg_destinat,
+       nazione_prot_veg.denom_nazione AS descNazioneProtVegDestinat,
+       ctr.spedizione_multipla,
+       ctr.numero_certificati_richiesti,
+       ctr.numero_certificato_originale,
+       ctr.luogo_deposito AS luogoDeposito,
+       cdtc.id_tipo_certificato AS idTipoCertificato,
+       cdtc.desc_tipo_certificato AS descTipoCertificato,
+       ctr.data_inizio_disponibilita AS dataInizioDisponibilita,
+       ctr.data_partenza_merce AS dataPartenzaMerce,
+       ctr.note_per_ispettore AS notePerIspettore,
+       ctr.ora_inizio_disponibilita AS oraInizioDisponibilita,
+       ctr.note_trasporto,
+       ctr.data_inoltro AS dataInoltro,
+       ctr.data_esecuzione AS dataEsecuzione,
+       ctr.id_utente_insert AS idUtenteInsert,
+       ctr.id_utente_update AS idUtenteUpdate,
+       ctr.data_insert AS dataInsert, 
+       ctr.data_update AS dataUpdate,
+       cdts.id_tipo_spedizioniere AS idTipoSpedizioniere,
+       cdts.denom_tipo_spedizioniere AS denomTipoSpedizioniere,
+       cts.autoriz_pagam_posticip,
+       cts.id_spedizioniere AS idSpedizioniere,
+       ctr.id_allegato as idAllegato,
+       cts.denom_spedizioniere AS denomSpedizioniere,
+       (SELECT NUMERO_CERTIFICATO
+        FROM (SELECT ctc.NUMERO_CERTIFICATO,
+                     ROW_NUMBER() OVER (ORDER BY ctc.ID_CERTIFICATO DESC) AS ORD
+              FROM CAR_T_CERTIFICATO ctc
+              WHERE ctc.id_richiesta = ctr.id_richiesta) AS PART
+        WHERE PART.ORD = 1) AS numeroCertificato,
+        (SELECT COUNT('X') 
+          FROM car_r_merce_richiesta 
+          WHERE id_richiesta = ctr.id_richiesta
+        ) AS numeroMerci,
+        pagamento.id_pagamento AS idPagamento
+FROM car_t_richiesta ctr
+  LEFT JOIN car_d_tipo_richiesta tipo_richiesta ON ctr.id_tipo_richiesta = tipo_richiesta.id_tipo_richiesta
+  LEFT JOIN car_d_stato_richiesta cdsr ON cdsr.id_stato_richiesta = ctr.id_stato_richiesta
+  LEFT JOIN car_d_ufficio_doganale cdud ON cdud.id_ufficio_doganale = ctr.id_ufficio_doganale_entrata
+  LEFT JOIN car_d_ufficio_doganale dogana_utilizzato 
+    ON dogana_utilizzato.id_ufficio_doganale = ctr.id_ufficio_doganale_utilizzato
+  LEFT JOIN car_t_utente ctu ON ctu.id_utente = ctr.id_utente_insert
+  LEFT JOIN car_t_spedizioniere cts ON cts.id_spedizioniere = ctu.id_spedizioniere
+  LEFT JOIN car_t_certificato ctc ON ctc.id_richiesta = ctr.id_richiesta
+  LEFT JOIN car_d_nazione cdnm ON cdnm.id_nazione = ctr.id_nazione_mittente
+  LEFT JOIN car_d_nazione cdnd ON cdnd.id_nazione = ctr.id_nazione_destinatario
+  LEFT JOIN car_d_nazione nazione_rup ON ctr.id_nazione_rup_destinatario = nazione_rup.id_nazione
+  LEFT JOIN car_d_nazione nazione_prot_veg ON ctr.id_nazione_prot_veg_destinat = nazione_prot_veg.id_nazione
+  LEFT JOIN car_d_comune cdc ON cdc.id_comune = ctr.id_comune_ita
+  LEFT JOIN car_d_provincia provincia ON cdc.id_provincia= provincia.id_provincia
+  LEFT JOIN car_d_modo_trasporto cdmt ON cdmt.id_modo_trasporto = ctr.id_modo_trasporto
+  LEFT JOIN car_d_tipo_certificato cdtc ON cdtc.id_tipo_certificato = ctc.id_tipo_certificato
+  LEFT JOIN car_d_tipo_spedizioniere cdts ON cdts.id_tipo_spedizioniere = cts.id_tipo_spedizioniere
+  LEFT JOIN car_d_regione regione_dest ON ctr.id_regione_rup_destinatario = regione_dest.id_regione
+  LEFT JOIN car_t_pagamento pagamento ON ctr.id_richiesta = pagamento.id_richiesta
+WHERE ctr.id_richiesta = #{idRichiesta}
+  </select>
+  
+  <update id="updateDatiRichiesta" parameterType="it.aizoon.ersaf.dto.generati.CarTRichiesta">
+    update caronte.car_t_richiesta
+    set 
+      note_dati_richiesta = #{noteDatiRichiesta,jdbcType=VARCHAR},
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP},
+      <if test="idAllegato != null">
+        id_allegato = #{idAllegato,jdbcType=SMALLINT},
+      </if>
+      numero_certificato_originale = #{numeroCertificatoOriginale,jdbcType=VARCHAR}
+    where id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </update>
+
+  <update id="updateDatiMittente" parameterType="it.aizoon.ersaf.dto.generati.CarTRichiesta">
+    update caronte.car_t_richiesta
+    set denom_mittente = #{denomMittente,jdbcType=VARCHAR},
+      indirizzo_mittente = #{indirizzoMittente,jdbcType=VARCHAR},
+      id_nazione_mittente = #{idNazioneMittente,jdbcType=SMALLINT},
+      denom_comune_est_mittente = #{denomComuneEstMittente,jdbcType=VARCHAR},
+      id_comune_ita = #{idComuneIta,jdbcType=SMALLINT},
+      note_mittente_certif = #{noteMittenteCertif,jdbcType=VARCHAR},
+      codice_rup_mittente = #{codiceRupMittente,jdbcType=VARCHAR},
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </update>
+      
+  <update id="updateDatiDestinatario" parameterType="it.aizoon.ersaf.dto.generati.CarTRichiesta">
+    update caronte.car_t_richiesta
+    set denom_destinatario = #{denomDestinatario,jdbcType=VARCHAR},
+      indirizzo_destinatario = #{indirizzoDestinatario,jdbcType=VARCHAR},
+      id_comune_ita = #{idComuneIta,jdbcType=SMALLINT},
+      codice_rup_destinatario = #{codiceRupDestinatario,jdbcType=VARCHAR},
+      id_regione_rup_destinatario = #{idRegioneRupDestinatario,jdbcType=SMALLINT},
+      denom_comune_est_destinatario = #{denomComuneEstDestinatario,jdbcType=VARCHAR},
+      id_nazione_destinatario = #{idNazioneDestinatario,jdbcType=BIGINT},
+      id_nazione_rup_destinatario = #{idNazioneRupDestinatario,jdbcType=BIGINT},
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDataEsecuzione" parameterType="it.aizoon.ersaf.dto.generati.CarTRichiesta">
+  	update caronte.car_t_richiesta
+  	set data_esecuzione = #{dataEsecuzione, jdbcType=DATE}
+  	where id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDatiTrasporto" parameterType="it.aizoon.ersaf.dto.generati.CarTRichiesta">
+    update caronte.car_t_richiesta
+    set id_ufficio_doganale_entrata = #{idUfficioDoganaleEntrata,jdbcType=SMALLINT},
+      id_ufficio_doganale_utilizzato = #{idUfficioDoganaleUtilizzato, jdbcType=SMALLINT},
+      punto_entrata_dichiarato = #{puntoEntrataDichiarato,jdbcType=VARCHAR},
+      id_modo_trasporto = #{idModoTrasporto,jdbcType=SMALLINT},
+      identif_mezzo_trasporto = #{identifMezzoTrasporto,jdbcType=VARCHAR},
+      spedizione_multipla = #{spedizioneMultipla,jdbcType=BIT},
+      numero_certificati_richiesti = #{numeroCertificatiRichiesti,jdbcType=NUMERIC},
+      id_nazione_prot_veg_destinat = #{idNazioneProtVegDestinat,jdbcType=BIGINT},
+      luogo_deposito = #{luogoDeposito,jdbcType=VARCHAR},
+      data_inizio_disponibilita = #{dataInizioDisponibilita,jdbcType=DATE},
+      ora_inizio_disponibilita = #{oraInizioDisponibilita,jdbcType=TIME},
+      data_partenza_merce = #{dataPartenzaMerce,jdbcType=DATE},
+      note_trasporto = #{noteTrasporto,jdbcType=VARCHAR},
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </update>
+  
+  <select id="getListaMerciRichiesta" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.MerceRichiestaDto">
+    SELECT merce.id_merce_richiesta, merce.numero_colli, merce.id_natura_collo, tipo_prodotto.id_tipo_prodotto, 
+      tipo_prodotto.desc_tipo_prodotto, merce.id_prodotto, prodotto.denom_prodotto AS descProdotto, 
+      unita_misura.id_unita_misura as idUnitaMisura, 
+      unita_misura.desc_unita_misura, unita_misura.cod_unita_misura AS codUnitaMisura, merce.id_genere, lingua_genere.denom_genere AS desc_genere,
+      merce.id_specie, lingua_specie.denom_specie AS desc_specie, merce.id_prodotto, merce.id_nazione_origine, 
+      nazione_origine.denom_nazione AS desc_nazione_origine, nazione_origine.cod_nazione as codNazioneOrigine, merce.numero_certificato, merce.marchio, merce.quantita, 
+      merce.quantita_lorda_prodotto, merce.numero_pezzi, merce.id_richiesta, merce.accettato, merce.id_utente_insert, merce.data_insert, 
+      merce.id_utente_update, merce.data_update, 
+      coalesce((
+        SELECT sum(importo) 
+        FROM car_r_merce_tariffa 
+          INNER JOIN car_d_tariffa tariffa
+            USING (id_tariffa)
+          INNER JOIN car_d_tipo_controllo_tariffa tipo
+            USING (id_tipo_controllo_tariffa)
+        WHERE id_merce_richiesta = merce.id_merce_richiesta
+        AND tipo.id_tipo_controllo = 3
+      ), 0) AS tariffa_teorica
+    FROM caronte.car_r_merce_richiesta merce
+      INNER JOIN car_d_prodotto prodotto
+        ON merce.id_prodotto = prodotto.id_prodotto
+      INNER JOIN car_d_tipo_prodotto tipo_prodotto
+        ON prodotto.id_tipo_prodotto = tipo_prodotto.id_tipo_prodotto
+      INNER JOIN car_d_unita_misura unita_misura
+        ON tipo_prodotto.id_unita_misura = unita_misura.id_unita_misura
+      LEFT OUTER JOIN (
+        SELECT lingua_genere.id_genere, lingua_genere.denom_genere 
+        FROM car_r_lingua_genere lingua_genere 
+          INNER JOIN car_d_lingua lingua
+            ON lingua_genere.id_lingua = lingua.id_lingua
+        WHERE UPPER(lingua.cod_lingua) = 'LA'
+      ) lingua_genere
+        ON merce.id_genere = lingua_genere.id_genere
+      LEFT OUTER JOIN (
+        SELECT lingua_specie.id_specie, lingua_specie.denom_specie
+        FROM car_r_lingua_specie lingua_specie 
+          INNER JOIN car_d_lingua lingua
+            ON lingua_specie.id_lingua = lingua.id_lingua
+        WHERE UPPER(lingua.cod_lingua) = 'LA'
+      ) lingua_specie
+        ON merce.id_specie = lingua_specie.id_specie
+      INNER JOIN car_d_nazione nazione_origine
+        ON merce.id_nazione_origine = nazione_origine.id_nazione
+    WHERE id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+    ORDER BY desc_nazione_origine, desc_tipo_prodotto, desc_genere, id_merce_richiesta
+  </select>
+  
+  <select id="getListaCampionamentiVerbale" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarRCampionamentoPartita">
+	SELECT id_merce_richiesta, descrizione_partita, colli, kg, mc,
+	unita, quantita_analizzati
+	FROM car_r_campionamento_partita partita
+	INNER JOIN car_t_verbale_ispezione ispezione ON partita.id_verbale_ispezione = ispezione.id_verbale_ispezione
+	INNER JOIN car_t_certificato certificato ON ispezione.id_certificato = certificato.id_certificato
+	INNER JOIN car_t_richiesta richiesta ON certificato.id_richiesta = richiesta.id_richiesta
+	WHERE richiesta.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getListaMerciRichiestaExport" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.MerceRichiestaDto">
+    SELECT merce.id_merce_richiesta, merce.numero_colli, merce.id_natura_collo, merce.id_tipo_prodotto, 
+      prodotto.denom_prodotto AS descProdotto, natura_collo.desc_natura_collo AS descNaturaCollo, 
+      classe.id_classe AS idClasseProdotto, classe.denom_classe AS descClasseProdotto, 
+      tipo_prodotto.desc_tipo_prodotto, unita_misura.id_unita_misura as idUnitaMisura, unita_misura.desc_unita_misura, 
+      merce.id_genere, lingua_genere.denom_genere AS desc_genere, merce.id_specie, 
+      lingua_specie.denom_specie AS desc_specie, merce.id_prodotto, merce.id_nazione_origine, 
+      nazione_origine.denom_nazione AS desc_nazione_origine, merce.numero_certificato, merce.marchio, merce.quantita, 
+      merce.quantita_lorda_prodotto, merce.numero_pezzi, merce.id_richiesta, merce.accettato, merce.id_utente_insert, 
+      merce.data_insert, merce.id_utente_update, merce.data_update
+    FROM caronte.car_r_merce_richiesta merce
+      INNER JOIN car_d_prodotto prodotto ON merce.id_prodotto = prodotto.id_prodotto 
+      INNER JOIN car_d_tipo_prodotto tipo_prodotto ON prodotto.id_tipo_prodotto = tipo_prodotto.id_tipo_prodotto
+      LEFT OUTER JOIN car_d_natura_collo natura_collo ON merce.id_natura_collo = natura_collo.id_natura_collo 
+      INNER JOIN car_d_classe classe ON classe.id_classe = prodotto.id_classe 
+      INNER JOIN car_d_unita_misura unita_misura
+        ON tipo_prodotto.id_unita_misura = unita_misura.id_unita_misura
+      LEFT OUTER JOIN (
+        SELECT lingua_genere.id_genere, lingua_genere.denom_genere 
+        FROM car_r_lingua_genere lingua_genere 
+          INNER JOIN car_d_lingua lingua
+            ON lingua_genere.id_lingua = lingua.id_lingua
+        WHERE UPPER(lingua.cod_lingua) = 'LA'
+      ) lingua_genere
+        ON merce.id_genere = lingua_genere.id_genere
+      LEFT OUTER JOIN (
+        SELECT lingua_specie.id_specie, lingua_specie.denom_specie
+        FROM car_r_lingua_specie lingua_specie 
+          INNER JOIN car_d_lingua lingua
+            ON lingua_specie.id_lingua = lingua.id_lingua
+        WHERE UPPER(lingua.cod_lingua) = 'LA'
+      ) lingua_specie
+        ON merce.id_specie = lingua_specie.id_specie
+      INNER JOIN car_d_nazione nazione_origine
+        ON merce.id_nazione_origine = nazione_origine.id_nazione
+    WHERE id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+    ORDER BY desc_nazione_origine, desc_tipo_prodotto, desc_genere, id_merce_richiesta
+  </select>
+  
+  <select id="getTotaliTariffeRichiesta" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.TariffeRichiestaDto">
+    SELECT COALESCE(totale_documentale * numero_certificati, 0) AS totale_documentale, 
+      COALESCE(totale_identita * numero_certificati, 0) AS totale_identita, 
+      COALESCE(totale_fitosanitario * numero_certificati, 0) AS totale_fitosanitario, 
+      COALESCE(massimale_tariffa, 0) AS massimale_tariffa,
+      numero_certificati, 
+      COALESCE(LEAST(totale_documentale + totale_identita + totale_fitosanitario, massimale_tariffa) * numero_certificati, 0) AS totale_tariffe 
+    FROM (
+      SELECT COALESCE(MAX(CASE WHEN tipo_controllo.cod_tipo_controllo = '1' THEN tariffe_merci.importo ELSE 0 END), 0) AS totale_documentale, 
+        COALESCE(MAX(CASE WHEN tipo_controllo.cod_tipo_controllo = '2' THEN tariffe_merci.importo ELSE 0 END), 0) AS totale_identita, 
+        COALESCE(SUM(CASE WHEN tipo_controllo.cod_tipo_controllo = '3' THEN tariffe_merci.importo ELSE 0 END), 0) AS totale_fitosanitario, 
+        MAX(CASE WHEN tipo_controllo.cod_tipo_controllo = '3' THEN tariffa.massimale_tariffa ELSE NULL END) AS massimale_tariffa,
+        MAX(richiesta.numero_certificati) AS numero_certificati
+      FROM (
+        SELECT id_richiesta, 
+                CASE WHEN spedizione_multipla THEN numero_certificati_richiesti ELSE 1 END numero_certificati
+        FROM car_t_richiesta
+      ) AS richiesta
+        LEFT OUTER JOIN (
+          SELECT merce.id_richiesta, 
+                  merce_tariffa.id_tariffa, 
+                  merce_tariffa.importo 
+          FROM car_r_merce_richiesta merce
+            INNER JOIN car_r_merce_tariffa merce_tariffa
+              ON merce.id_merce_richiesta = merce_tariffa.id_merce_richiesta
+          UNION ALL
+          SELECT id_richiesta, 
+                  id_tariffa, 
+                  importo
+          FROM car_r_richiesta_tariffa 
+        ) tariffe_merci
+          ON richiesta.id_richiesta = tariffe_merci.id_richiesta
+        LEFT OUTER JOIN car_d_tariffa tariffa
+          ON tariffe_merci.id_tariffa = tariffa.id_tariffa
+        LEFT OUTER JOIN car_d_tipo_controllo_tariffa tipo_controllo_tariffa
+          ON tariffa.id_tipo_controllo_tariffa = tipo_controllo_tariffa.id_tipo_controllo_tariffa
+        LEFT OUTER JOIN car_d_tipo_controllo tipo_controllo
+          ON tipo_controllo_tariffa.id_tipo_controllo = tipo_controllo.id_tipo_controllo
+      WHERE richiesta.id_richiesta = #{idRichiesta,jdbcType=BIGINT}) AS tariffe
+  </select>
+  
+  <select id="getListaTariffeProdotti" resultType="it.aizoon.ersaf.dto.TariffaDto">
+    SELECT tariffa.id_tariffa, tariffa.id_tipo_prodotto, tipo_prodotto.desc_tipo_prodotto, tipo_prodotto.id_unita_misura, 
+      unita_misura.desc_unita_misura, range_tariffa.tariffa, range_tariffa.quantita_limite_sup quantita_limite, 
+      incremento_quantita, incremento_tariffa, massimale_tariffa
+    FROM car_d_tariffa tariffa
+      INNER JOIN car_d_tipo_prodotto tipo_prodotto
+        ON tariffa.id_tipo_prodotto = tipo_prodotto.id_tipo_prodotto
+      INNER JOIN car_d_unita_misura unita_misura
+        ON tipo_prodotto.id_unita_misura = unita_misura.id_unita_misura
+      INNER JOIN car_d_range_tariffa range_tariffa
+        ON tariffa.id_tariffa = range_tariffa.id_tariffa
+    WHERE now()::timestamp BETWEEN tariffa.inizio_validita AND coalesce(tariffa.fine_validita, now()::timestamp)
+    ORDER BY desc_tipo_prodotto
+  </select>
+  
+  <delete id="cancellaTariffeMerciRichiesta">
+    DELETE
+			FROM car_r_merce_tariffa CRMT
+		 WHERE CRMT.id_merce_richiesta IN (SELECT CRMR.id_merce_richiesta
+			                                  FROM car_r_merce_richiesta CRMR
+			                                  WHERE CRMR.id_richiesta = #{idRichiesta})
+  </delete>
+  
+  <insert id="inserisciTariffeMerciRichiesta">
+	  <![CDATA[
+    INSERT INTO car_r_merce_tariffa
+    (
+      id_merce_richiesta,
+      id_tariffa,
+      importo,
+      id_utente_insert,
+      data_insert
+    )
+    SELECT id_merce_richiesta, 
+            id_tariffa, 
+            CASE WHEN quantita <= COALESCE(quantita_limite_sup, quantita) THEN tariffa 
+              WHEN incremento_quantita IS NOT NULL THEN 
+                LEAST(CEIL((quantita - quantita_limite_sup) / incremento_quantita) * incremento_tariffa + tariffa, massimale_tariffa)
+              ELSE coalesce(massimale_tariffa, tariffa) END AS importo,
+            #{idUtente},
+            NOW()::TIMESTAMP
+    FROM (
+      SELECT merce.id_merce_richiesta,
+              tariffa.id_tariffa, 
+              tariffa.massimale_tariffa,
+              tariffa.incremento_quantita, 
+              tariffa.incremento_tariffa,
+              merce.quantita,
+              range_tariffa.tariffa,
+              range_tariffa.quantita_limite_sup,
+              first_value(range_tariffa.quantita_limite_sup) over (
+                partition by merce.id_merce_richiesta, tariffa.id_tariffa 
+                order by range_tariffa.quantita_limite_sup desc) AS max_quantita_limite_sup
+      FROM (
+        SELECT richiesta.id_tipo_richiesta, 
+                merce_inner.id_merce_richiesta, 
+                merce_inner.id_prodotto, 
+                sum(merce_inner.quantita) over (
+                  partition by merce_inner.id_richiesta, prodotto_inner.id_tipo_prodotto) AS quantita,
+                first_value(merce_inner.id_merce_richiesta) over (
+                  partition by merce_inner.id_richiesta, prodotto_inner.id_tipo_prodotto 
+                  order by merce_inner.id_merce_richiesta) AS first_id_merce_richiesta
+        FROM car_t_richiesta AS richiesta
+          INNER JOIN car_r_merce_richiesta AS merce_inner
+            ON richiesta.id_richiesta = merce_inner.id_richiesta
+          LEFT OUTER JOIN car_d_prodotto AS prodotto_inner
+            ON merce_inner.id_prodotto = prodotto_inner.id_prodotto
+        WHERE richiesta.id_richiesta = #{idRichiesta}
+        AND (richiesta.id_tipo_richiesta != 1 
+          OR EXISTS (
+	          SELECT 'X'
+	          FROM car_r_applicazione_tariffa
+	          WHERE (id_tipo_prodotto IS NULL OR id_tipo_prodotto = prodotto_inner.id_tipo_prodotto)
+	          AND   (id_prodotto IS NULL OR id_prodotto = merce_inner.id_prodotto)
+	          AND   (id_genere IS NULL OR id_genere = merce_inner.id_genere)
+	          AND   (merce_inner.id_specie IS NULL OR id_specie IS NULL OR id_specie = merce_inner.id_specie)
+	          AND   (id_gruppo_nazioni IS NULL OR id_gruppo_nazioni IN (
+	            SELECT id_gruppo_nazioni
+	            FROM car_r_nazione_gruppo
+	            WHERE id_nazione = merce_inner.id_nazione_origine)
+	          )
+	          AND   (id_nazione IS NULL OR id_nazione = merce_inner.id_nazione_origine)
+	        )
+        )
+      ) AS merce
+        INNER JOIN car_d_prodotto AS prodotto 
+          ON merce.id_prodotto = prodotto.id_prodotto
+        INNER JOIN car_d_tipo_controllo_tariffa AS tipo_controllo 
+          ON merce.id_tipo_richiesta = tipo_controllo.id_tipo_richiesta
+        INNER JOIN car_d_tariffa AS tariffa 
+          ON tipo_controllo.id_tipo_controllo_tariffa = tariffa.id_tipo_controllo_tariffa
+        INNER JOIN car_d_range_tariffa AS range_tariffa 
+          ON tariffa.id_tariffa = range_tariffa.id_tariffa
+      WHERE merce.id_merce_richiesta = merce.first_id_merce_richiesta
+      AND (tariffa.ID_TIPO_PRODOTTO IS NULL OR tariffa.ID_TIPO_PRODOTTO = prodotto.ID_TIPO_PRODOTTO)
+      AND NOW()::TIMESTAMP BETWEEN tariffa.INIZIO_VALIDITA AND COALESCE(tariffa.FINE_VALIDITA,NOW()::TIMESTAMP)
+      AND merce.quantita > COALESCE(range_tariffa.quantita_limite_inf, 0)
+      ORDER BY id_merce_richiesta
+    ) AS tariffe
+    WHERE (tariffe.quantita_limite_sup IS NULL OR tariffe.quantita_limite_sup = tariffe.max_quantita_limite_sup)
+		]]>		
+  </insert>
+  
+  <insert id="inserisciTariffeRichiesta">
+    <![CDATA[
+    INSERT INTO car_r_richiesta_tariffa
+    (
+      id_richiesta,
+      id_tariffa,
+      importo,
+      id_utente_insert,
+      data_insert
+    )
+    SELECT id_richiesta, 
+            id_tariffa, 
+            CASE WHEN somma_quantita <= COALESCE(quantita_limite_sup, somma_quantita) THEN tariffa 
+              WHEN incremento_quantita IS NOT NULL THEN 
+                LEAST(CEIL((somma_quantita - quantita_limite_sup) / incremento_quantita) * incremento_tariffa + tariffa, massimale_tariffa)
+              ELSE coalesce(massimale_tariffa, tariffa) END AS importo,
+            #{idUtente},
+            NOW()::TIMESTAMP
+    FROM (
+      SELECT richiesta.id_richiesta,
+              tariffa.id_tariffa, 
+              tariffa.massimale_tariffa,
+              tariffa.incremento_quantita, 
+              tariffa.incremento_tariffa,
+              merci.somma_quantita,
+              range_tariffa.tariffa,
+              range_tariffa.quantita_limite_sup,
+              first_value(range_tariffa.quantita_limite_sup) over (
+                partition by tariffa.id_tariffa 
+                order by range_tariffa.quantita_limite_sup desc) AS max_quantita_limite_sup
+      FROM car_t_richiesta AS richiesta
+        INNER JOIN (
+          SELECT id_richiesta, 
+                  SUM(quantita) AS somma_quantita 
+          FROM car_r_merce_richiesta 
+          GROUP BY id_richiesta
+        ) AS merci 
+          ON richiesta.id_richiesta = merci.id_richiesta
+        INNER JOIN car_d_tipo_controllo_tariffa AS tipo_controllo 
+          ON richiesta.id_tipo_richiesta = tipo_controllo.id_tipo_richiesta
+        INNER JOIN car_d_tariffa AS tariffa 
+          ON tipo_controllo.id_tipo_controllo_tariffa = tariffa.id_tipo_controllo_tariffa
+        INNER JOIN car_d_range_tariffa AS range_tariffa 
+          ON tariffa.id_tariffa = range_tariffa.id_tariffa
+      WHERE richiesta.id_richiesta = #{idRichiesta}
+      AND NOW()::TIMESTAMP BETWEEN tariffa.INIZIO_VALIDITA AND COALESCE(tariffa.FINE_VALIDITA,NOW()::TIMESTAMP)
+      AND merci.somma_quantita > COALESCE(range_tariffa.quantita_limite_inf, 0)
+    ) AS tariffe
+    WHERE (tariffe.quantita_limite_sup IS NULL OR tariffe.quantita_limite_sup = tariffe.max_quantita_limite_sup)
+    ]]>   
+  </insert>
+  
+  <select id="getTrattamentoRichiesta" resultType="it.aizoon.ersaf.dto.TrattamentoRichiestaDto" parameterType="java.lang.Long">
+  	SELECT trRich.id_trattamento as idTrattamento, desc_trattamento as descTrattamento, prodotto_chimico as prodottoChimico, 
+  	       durata as durata, temperatura as temperatura, concentrazione as concentrazione, data_trattamento as dataTrattamento, 
+  	       informazioni_supplementari as informazioniSupplementari
+    FROM   car_r_trattamento_richiesta as trRich join car_d_trattamento as tratt on  trRich.id_trattamento = tratt.id_trattamento
+    WHERE  trRich.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getPagamentoRichiesta" resultType="it.aizoon.ersaf.dto.PagamentoRichiestaDto" parameterType="java.lang.Long">
+  	SELECT pagam.id_pagamento, pagam.mittente, pagam.id_mezzo_pagamento, 
+  	       desc_mezzo_pagamento as tipoPagamento, pagam.data_pagamento as dataPagamento, 
+  	       numero_documento as numeroDocumento, pagam.nome_file_allegato
+	  FROM car_t_pagamento as pagam join car_d_mezzo_pagamento as mezzoPagam on pagam.id_mezzo_pagamento = mezzoPagam.id_mezzo_pagamento
+	  WHERE id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getListaStatiRichiestaSuccessivi" resultType="it.aizoon.ersaf.dto.generati.CarDStatoRichiesta">
+    SELECT DISTINCT stato.id_stato_richiesta, stato.desc_stato_richiesta
+    FROM car_t_richiesta AS richiesta
+      INNER JOIN car_r_gruppo_stato_successivo gruppo_stato
+        ON richiesta.id_stato_richiesta = gruppo_stato.id_stato
+      INNER JOIN car_r_utente_gruppo utente_gruppo 
+        USING (id_gruppo) 
+      INNER JOIN car_d_stato_richiesta stato 
+        ON gruppo_stato.id_stato_successivo = stato.id_stato_richiesta 
+    WHERE richiesta.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+    AND ((richiesta.id_utente_insert = #{idUtente,jdbcType=BIGINT} AND id_gruppo IN (3, 4)) 
+      OR utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT})
+    ORDER BY id_stato_richiesta 
+  </select>
+  
+  <select id="isUtenteAbilitatoModificaRichiesta" resultType="java.lang.Boolean">
+    SELECT bool_or(CASE 
+      WHEN utente_gruppo.id_utente = richiesta.id_utente_insert AND richiesta.id_stato_richiesta IN (1, 5) 
+        THEN true 
+      ELSE gruppo_stato.richiesta_modificabile END)
+    FROM car_t_richiesta richiesta
+      INNER JOIN car_r_gruppo_stato gruppo_stato
+        ON richiesta.id_stato_richiesta = gruppo_stato.id_stato
+      INNER JOIN car_r_utente_gruppo utente_gruppo
+        USING (id_gruppo)
+    WHERE utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT}
+    AND richiesta.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="isUtenteAbilitatoLetturaRichiesta" resultType="java.lang.Boolean">
+    SELECT (
+      SELECT bool_or(superuser) 
+      FROM car_d_ruolo ruolo
+        INNER JOIN car_d_gruppo gruppo 
+          USING (id_ruolo) 
+        INNER JOIN car_r_utente_gruppo utente_gruppo
+          USING (id_gruppo)
+      WHERE utente_gruppo.id_utente = utente.id_utente
+    ) OR utente_insert.id_spedizioniere = utente.id_spedizioniere AS abilitato
+    FROM car_t_richiesta richiesta
+      INNER JOIN car_t_utente utente_insert
+        ON richiesta.id_utente_insert = utente_insert.id_utente
+      INNER JOIN car_t_utente utente
+        ON utente.id_utente = #{idUtente,jdbcType=BIGINT}
+    WHERE richiesta.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getDatiCertificatoRichiesta" resultType="it.aizoon.ersaf.dto.CertificatoRichiestaDto" parameterType="java.lang.Long">
+    WITH tipi_certificato_origine AS (
+      SELECT FALSE AS chiave, 
+              valore_costante AS descrizione 
+      FROM car_d_costante 
+      WHERE cod_costante = 'CC_ORIG' 
+      UNION 
+      SELECT TRUE, 
+              valore_costante 
+      FROM car_d_costante 
+      WHERE cod_costante = 'CC_COPIA')
+    SELECT certificato.id_certificato, certificato.id_tipo_certificato, tipo_certificato.desc_tipo_certificato, 
+      certificato.data_esecuzione as dataEsecuzione, certificato.id_ufficio_doganale_esecuzione, 
+      dogana.denom_ufficio_doganale as luogoEsecuzione, 
+      certificato.id_comune_esecuzione,
+      comune_esecuzione.denom_comune AS comune_esecuzione,
+      provincia_esecuzione.id_provincia AS id_provincia_esecuzione,
+      provincia_esecuzione.denom_provincia as provincia_esecuzione,
+      provincia_esecuzione.sigla_provincia AS sigla_provincia_esecuzione,
+      certificato.id_ispettore, dati_ispettore.nome as nomeIspettore, 
+      dati_ispettore.cognome as cognomeIspettore, ispettore.numero_tessera as numeroTesseraIspettore, 
+      ispettore_documentale.id_ispettore AS idIspettoreDocumentale, ispettore_documentale.nome as nomeIspettoreDocumentale, 
+      ispettore_documentale.cognome as cognomeIspettoreDocumentale, 
+      ispettore_documentale.numero_tessera as numeroTesseraIspettoreDocumentale, 
+      ispettore_identita.id_ispettore AS idIspettoreIdentita, ispettore_identita.nome as nomeIspettoreIdentita, 
+      ispettore_identita.cognome as cognomeIspettoreIdentita, ispettore_identita.numero_tessera as numeroTesseraIspettoreIdentita, 
+      ispettore_fitosanitario.id_ispettore AS idIspettoreFitosanitario, ispettore_fitosanitario.nome as nomeIspettoreFitosanitario, 
+      ispettore_fitosanitario.cognome as cognomeIspettoreFitosanitario, 
+      ispettore_fitosanitario.numero_tessera as numeroTesseraIspettoreFitosanitario, 
+      certificato.numero_certificato as numeroCertificato, certificato.numero_certificato_manuale as numeroCertificatoManuale, 
+      certificato.note as note, valore_costante as codiceEnte, 
+      certificato.dichiarazione_supplementare,
+      certificato.id_tipo_imballaggio, 
+      tipo_imballaggio.desc_tipo_imballaggio,
+      certificato.copia_conforme,
+      (
+        SELECT descrizione 
+        FROM tipi_certificato_origine 
+        WHERE chiave = COALESCE(certificato.copia_conforme, FALSE)
+      ) AS desc_copia_conforme,
+      certificato.conforme_certif_orig,
+      certificato.ispezione_supplementare
+    FROM car_t_certificato AS certificato 
+      INNER JOIN car_d_tipo_certificato AS tipo_certificato
+        ON certificato.id_tipo_certificato = tipo_certificato.id_tipo_certificato
+      INNER JOIN car_t_ispettore AS ispettore ON certificato.id_ispettore = ispettore.id_ispettore 
+      INNER JOIN car_t_utente AS dati_ispettore ON ispettore.id_utente = dati_ispettore.id_utente
+      LEFT OUTER JOIN car_d_ufficio_doganale dogana 
+        ON certificato.id_ufficio_doganale_esecuzione = dogana.id_ufficio_doganale
+      LEFT OUTER JOIN car_d_comune AS comune_esecuzione 
+        ON certificato.id_comune_esecuzione = comune_esecuzione.id_comune
+      LEFT JOIN car_d_provincia AS provincia_esecuzione 
+        ON comune_esecuzione.id_provincia = provincia_esecuzione.id_provincia
+      INNER JOIN car_d_costante ON cod_costante = 'COD_REGION'
+      LEFT OUTER JOIN (
+        SELECT ispet_certificato.id_certificato, ispettore.id_ispettore, utente.nome, utente.cognome, ispettore.numero_tessera 
+				FROM car_r_ispet_certif_contr ispet_certificato
+				INNER JOIN car_t_ispettore ispettore ON ispet_certificato.id_ispettore = ispettore.id_ispettore
+				INNER JOIN car_t_utente utente ON ispettore.id_utente = utente.id_utente
+				WHERE ispet_certificato.id_tipo_controllo = 1) AS ispettore_documentale
+				ON certificato.id_certificato = ispettore_documentale.id_certificato
+				LEFT OUTER JOIN (
+				  SELECT ispet_certificato.id_certificato, ispettore.id_ispettore, utente.nome, utente.cognome, ispettore.numero_tessera 
+				  FROM car_r_ispet_certif_contr ispet_certificato
+				    INNER JOIN car_t_ispettore ispettore 
+				      ON ispet_certificato.id_ispettore = ispettore.id_ispettore
+				    INNER JOIN car_t_utente utente 
+				      ON ispettore.id_utente = utente.id_utente
+				  WHERE ispet_certificato.id_tipo_controllo = 2
+				) AS ispettore_identita
+				  ON certificato.id_certificato = ispettore_identita.id_certificato
+				LEFT OUTER JOIN (
+				  SELECT ispet_certificato.id_certificato, ispettore.id_ispettore, utente.nome, utente.cognome, ispettore.numero_tessera 
+				  FROM car_r_ispet_certif_contr ispet_certificato
+				    INNER JOIN car_t_ispettore ispettore 
+				      ON ispet_certificato.id_ispettore = ispettore.id_ispettore
+				    INNER JOIN car_t_utente utente 
+				      ON ispettore.id_utente = utente.id_utente
+				  WHERE ispet_certificato.id_tipo_controllo = 3
+				) AS ispettore_fitosanitario
+				  ON certificato.id_certificato = ispettore_fitosanitario.id_certificato
+				LEFT OUTER JOIN car_d_tipo_imballaggio tipo_imballaggio
+				  ON certificato.id_tipo_imballaggio = tipo_imballaggio.id_tipo_imballaggio
+    WHERE certificato.id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+  </select>
+  
+  <select id="getImportoPrevistoTariffa" resultType="java.math.BigDecimal" parameterType="map">
+    <![CDATA[
+    SELECT SUM(CASE WHEN #{quantita,jdbcType=NUMERIC} <= COALESCE(quantita_limite_sup, #{quantita,jdbcType=NUMERIC}) THEN tariffa 
+      WHEN incremento_quantita IS NOT NULL THEN 
+        LEAST(CEIL((#{quantita,jdbcType=NUMERIC} - quantita_limite_sup) / incremento_quantita) * incremento_tariffa + tariffa, massimale_tariffa)
+      ELSE coalesce(massimale_tariffa, tariffa) END) AS IMPORTO
+    FROM (
+      SELECT tariffa.id_tariffa, 
+              tariffa.massimale_tariffa,
+              tariffa.incremento_quantita, 
+              tariffa.incremento_tariffa,
+              range_tariffa.tariffa,
+              range_tariffa.quantita_limite_sup,
+              first_value(range_tariffa.quantita_limite_sup) OVER (
+                PARTITION BY tariffa.id_tariffa 
+                order by range_tariffa.quantita_limite_sup desc) AS max_quantita_limite_sup
+      FROM car_d_tariffa AS tariffa
+        INNER JOIN car_d_tipo_controllo_tariffa AS tipo_controllo
+          ON tariffa.id_tipo_controllo_tariffa = tipo_controllo.id_tipo_controllo_tariffa
+          AND tipo_controllo.id_tipo_richiesta = #{idTipoRichiesta,jdbcType=SMALLINT}
+        INNER JOIN car_d_range_tariffa AS range_tariffa 
+          ON tariffa.id_tariffa = range_tariffa.id_tariffa
+      WHERE (tariffa.ID_TIPO_PRODOTTO IS NULL OR tariffa.ID_TIPO_PRODOTTO IN (
+        SELECT id_tipo_prodotto 
+        FROM car_d_prodotto 
+        WHERE id_prodotto = #{idProdotto,jdbcType=INTEGER})) 
+      AND NOW()::TIMESTAMP BETWEEN tariffa.INIZIO_VALIDITA AND COALESCE(tariffa.FINE_VALIDITA,NOW()::TIMESTAMP)
+      AND tipo_controllo.id_tipo_controllo = 3
+      AND #{quantita,jdbcType=NUMERIC} > COALESCE(range_tariffa.quantita_limite_inf, 0)
+    ) AS tariffe
+    WHERE (tariffe.quantita_limite_sup IS NULL OR tariffe.quantita_limite_sup = tariffe.max_quantita_limite_sup)
+    ]]>
+  </select>
+  
+  <select id="lockCertificato" resultType="java.lang.Long">
+    SELECT id_certificato
+    FROM car_t_certificato 
+    FOR UPDATE
+  </select>
+  
+  <select id="getNuovoNumeroCertificato" resultType="java.lang.String">
+    SELECT "GetNextNumeroCertificato"()
+  </select>
+  
+  <select id="lockRichiesta" resultType="java.lang.Long" parameterType="java.lang.Long">
+    SELECT id_stato_richiesta
+    FROM car_t_richiesta
+    WHERE id_richiesta = #{idRichiesta,jdbcType=BIGINT}
+    FOR UPDATE
+  </select>
+  
+  <delete id="cancellaispettoriCertificatiRichiesta" parameterType="java.lang.Long">
+    DELETE FROM car_r_ispet_certif_contr 
+    WHERE id_certificato IN (
+      SELECT id_certificato
+      FROM car_t_certificato 
+      WHERE id_richiesta = #{idRichiesta})
+  </delete>
+  
+  <select id="getApplicazioneTariffa" parameterType="it.aizoon.ersaf.dto.MerceRichiestaDto" resultType="java.lang.Long">
+    SELECT id_applicazione_tariffa
+    FROM car_r_applicazione_tariffa
+    WHERE NOW()::DATE BETWEEN inizio_validita AND COALESCE(fine_validita,NOW())
+    AND   (id_tipo_prodotto IS NULL OR id_tipo_prodotto = (
+      SELECT id_tipo_prodotto 
+      FROM car_d_prodotto 
+      WHERE id_prodotto = #{idProdotto}))
+    AND   (id_prodotto IS NULL OR id_prodotto = #{idProdotto})
+    AND   (id_genere IS NULL OR id_genere = #{idGenere})
+    <if test="idSpecie != null">
+      AND   (id_specie IS NULL OR id_specie = #{idSpecie})
+    </if>
+    <if test="idNazioneOrigine != null">
+      AND   (id_gruppo_nazioni IS NULL OR id_gruppo_nazioni IN (
+        SELECT id_gruppo_nazioni
+        FROM car_r_nazione_gruppo
+        WHERE id_nazione = #{idNazioneOrigine}))
+      AND   (id_nazione IS NULL OR id_nazione = #{idNazioneOrigine})
+    </if>
+    LIMIT 1
+  </select>
+  
+  <select id="getTariffeTipoRichiesta" parameterType="map" resultMap="getTariffeResultMap">
+    SELECT tariffa.id_tariffa, 
+            tariffa.incremento_quantita, 
+            tariffa.incremento_tariffa, 
+            tariffa.massimale_tariffa, 
+            range.id_range_tariffa, 
+            range.tariffa, 
+            range.quantita_limite_inf, 
+            range.quantita_limite_sup
+    FROM car_d_tipo_controllo_tariffa AS tipo_controllo
+      INNER JOIN car_d_tariffa AS tariffa
+        ON tipo_controllo.id_tipo_controllo_tariffa = tariffa.id_tipo_controllo_tariffa
+      LEFT OUTER JOIN car_d_range_tariffa AS range
+        ON tariffa.id_tariffa = range.id_tariffa
+    WHERE tipo_controllo.id_tipo_controllo = #{idTipoControllo}
+    AND tipo_controllo.id_tipo_richiesta = #{idTipoRichiesta}
+    AND NOW()::TIMESTAMP BETWEEN tariffa.inizio_validita AND COALESCE(tariffa.fine_validita,NOW()::TIMESTAMP)
+    ORDER BY tariffa.id_tariffa, quantita_limite_inf
+  </select>
+  
+  <select id="lockUploadTemp" resultType="java.lang.Long">
+    SELECT id_upload_temp
+    FROM car_t_upload_temp
+    FOR UPDATE
+  </select>
+  
+  <select id="getNextIdUploadTemp" resultType="java.lang.Long">
+    SELECT coalesce(max(id_upload_temp), 0) + 1 as next_id_upload_temp
+    FROM car_t_upload_temp
+  </select>
+  
+  
+  
+</mapper>

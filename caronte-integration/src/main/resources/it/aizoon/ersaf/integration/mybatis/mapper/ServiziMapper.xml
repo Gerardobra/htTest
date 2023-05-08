@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.ServiziMapper">
+
+	<resultMap id="getElencoDatiRichiesteMap" type="it.aizoon.ersaf.dto.DatiRichiesteDTO">
+		<id column="id_richiesta" jdbcType="BIGINT" property="idRichiesta" />
+		<result column="numero_richiesta" jdbcType="VARCHAR" property="numeroRichiesta" />
+		<result column="numero_certificato" jdbcType="VARCHAR" property="numeroCertificato" />
+		<result column="ente" jdbcType="VARCHAR" property="ente" />
+		<result column="stato_richiesta" jdbcType="VARCHAR" property="statoRichiesta" />
+		<result column="data_inoltro" jdbcType="DATE" property="dataInoltro" />
+		<result column="esecuzione" jdbcType="DATE" property="dataEsecuzione" />
+		<result column="utente_esecuzione" jdbcType="VARCHAR" property="utenteEsecuzione" />
+		<result column="data_rilascio_certificato" jdbcType="DATE" property="dataRilascioCertificato" />
+		<result column="numero_tessera" jdbcType="VARCHAR" property="numeroTessera" />
+		<result column="funzionario_rilascio_certificato" jdbcType="VARCHAR" property="funzionarioRilascioCertificato" />
+		<result column="denom_mittente" jdbcType="VARCHAR" property="mittenteNome" />
+		<result column="indirizzo_mittente" jdbcType="VARCHAR" property="mittenteIndirizzo" />
+		<result column="mittente_citta" jdbcType="VARCHAR" property="mittenteCitta" />
+		<result column="mittente_stato" jdbcType="VARCHAR" property="mittenteStato" />
+		<result column="denom_destinatario" jdbcType="VARCHAR" property="destinatarioNome" />
+		<result column="indirizzo_destinatario" jdbcType="VARCHAR" property="destinatarioIndirizzo" />
+		<result column="destinatario_comune" jdbcType="VARCHAR" property="destinatarioComune" />
+		<result column="destinatario_provincia" jdbcType="VARCHAR" property="destinatarioProvincia" />
+		<result column="destinatarioStato" jdbcType="VARCHAR" property="destinatarioStato" />
+		<result column="stato_origine" jdbcType="VARCHAR" property="statoOrigine" />
+		<result column="modo_trasporto" jdbcType="VARCHAR" property="modoTrasporto" />
+		<result column="documento_trasporto" jdbcType="VARCHAR" property="documentoTrasporto" />
+		<result column="dogana" jdbcType="VARCHAR" property="dogana" />
+		<result column="entrata_dichiarata" jdbcType="VARCHAR" property="entrataRichiesta" />
+		<result column="trattamento" jdbcType="VARCHAR" property="trattamento" />
+		<result column="trattamento_sostanza" jdbcType="VARCHAR" property="trattamentoSostanza" />
+		<result column="trattamento_durata" jdbcType="VARCHAR" property="trattamentoDurata" />
+		<result column="trattamento_concentrazione" jdbcType="VARCHAR" property="trattamentoConcentrazione" />
+		<result column="trattamento_data" jdbcType="DATE" property="trattamentoData" />
+		<result column="trattamento_informazioni" jdbcType="VARCHAR" property="trattamentoInformazioni" />
+		<result column="codice_rup" jdbcType="VARCHAR" property="codiceRup" />
+		<result column="regione_rup" jdbcType="VARCHAR" property="regioneRup" />
+		<result column="luogo_rilascio" jdbcType="VARCHAR" property="luogoRilascio" />
+		<result column="totale_tariffe" jdbcType="NUMERIC" property="totaleTariffe" />
+		<result column="tariffa" jdbcType="NUMERIC" property="tariffa" />
+		<result column="NOTE" jdbcType="VARCHAR" property="note" />
+		<collection property="merci" javaType="ArrayList" ofType="it.aizoon.ersaf.dto.MerceRichiestaDto">
+			<id column="id_merce_richiesta" jdbcType="NUMERIC" property="idMerceRichiesta" />
+			<result column="merce_tipo_merce" jdbcType="VARCHAR" property="descTipoProdotto" />
+			<result column="merce_desc_prodotto" jdbcType="VARCHAR" property="descProdotto" />
+			<result column="merce_genere" jdbcType="VARCHAR" property="descGenere" />
+			<result column="merce_specie" jdbcType="VARCHAR" property="descSpecie" />
+			<result column="merce_unita_misura" jdbcType="VARCHAR" property="descUnitaMisura" />
+			<result column="merce_quantita" jdbcType="VARCHAR" property="quantita" />
+		</collection>
+	</resultMap>
+
+	<select id="getElencoDatiRichieste" resultMap="getElencoDatiRichiesteMap" parameterType="it.aizoon.ersaf.form.RicercaDatiRichiesteForm">
+		SELECT CTR.ID_RICHIESTA AS ID_RICHIESTA,
+		       CRMR.id_merce_richiesta, 
+		       CTR.COD_RICHIESTA AS NUMERO_RICHIESTA,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cdcost.valore_costante ||COALESCE(ctc.numero_certificato::TEXT,ctc.numero_certificato_manuale::TEXT) 
+		       WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT 
+		       WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT END) AS NUMERO_CERTIFICATO,
+		       UPPER(CTS.DENOM_SPEDIZIONIERE) AS ENTE,
+		       UPPER(CDSR.DESC_STATO_RICHIESTA) AS STATO_RICHIESTA,
+		       CTR.DATA_INOLTRO,
+		       CTR.DATA_ESECUZIONE AS ESECUZIONE,
+		       UPPER(CTUC.COGNOME || ' ' || CTUC.NOME) AS UTENTE_ESECUZIONE,
+		       CTC.DATA_ESECUZIONE AS DATA_RILASCIO_CERTIFICATO,
+		       CTI.NUMERO_TESSERA,
+		       UPPER(CTUB.COGNOME || ' ' || CTUB.NOME) AS FUNZIONARIO_RILASCIO_CERTIFICATO,
+		       UPPER(CTR.DENOM_MITTENTE) AS DENOM_MITTENTE,
+		       UPPER(CTR.INDIRIZZO_MITTENTE) AS INDIRIZZO_MITTENTE,
+		       UPPER(CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' 
+		         THEN CTR.DENOM_COMUNE_EST_MITTENTE 
+		         ELSE cdcita.denom_comune END) AS MITTENTE_CITTA,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' 
+		         THEN CDNM.DENOM_NAZIONE 
+		         ELSE (SELECT D.DENOM_NAZIONE
+                   FROM CAR_D_COMUNE A,
+                        CAR_D_PROVINCIA B,
+                        CAR_D_REGIONE C,
+                        CAR_D_NAZIONE D
+                   WHERE A.ID_COMUNE = CTR.id_comune_ita
+                   AND   A.ID_PROVINCIA = B.ID_PROVINCIA
+                   AND   B.ID_REGIONE = C.ID_REGIONE
+                   AND   C.ID_NAZIONE = D.ID_NAZIONE) END AS MITTENTE_STATO,
+		       UPPER(CTR.DENOM_DESTINATARIO) AS DENOM_DESTINATARIO,
+		       UPPER(CTR.INDIRIZZO_DESTINATARIO) AS INDIRIZZO_DESTINATARIO,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' 
+		          THEN cdcita.DENOM_COMUNE 
+              ELSE CTR.DENOM_COMUNE_EST_MITTENTE END AS DESTINATARIO_COMUNE,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' 
+		          THEN CDP.sigla_provincia 
+              ELSE NULL END AS DESTINATARIO_PROVINCIA,
+		       CDND.DENOM_NAZIONE AS DESTINATARIO_STATO,
+		       (SELECT STRING_AGG(DISTINCT CDNMR.DENOM_NAZIONE,',')
+		        FROM CAR_R_MERCE_RICHIESTA CRMR,
+		             CAR_D_NAZIONE CDNMR
+		        WHERE CRMR.ID_RICHIESTA = CTR.ID_RICHIESTA
+		        AND   CDNMR.ID_NAZIONE = CRMR.ID_NAZIONE_ORIGINE) AS STATO_ORIGINE,
+		       CDMT.DESC_MODO_TRASPORTO AS MODO_TRASPORTO,
+		       CTR.IDENTIF_MEZZO_TRASPORTO AS DOCUMENTO_TRASPORTO,
+		       CDUDA.DENOM_UFFICIO_DOGANALE AS DOGANA,
+		       CTR.PUNTO_ENTRATA_DICHIARATO AS ENTRATA_DICHIARATA,
+		       CDT.DESC_TRATTAMENTO AS TRATTAMENTO,
+		       CRTR.PRODOTTO_CHIMICO AS TRATTAMENTO_SOSTANZA,
+		       CRTR.DURATA AS TRATTAMENTO_DURATA,
+		       CRTR.CONCENTRAZIONE AS TRATTAMENTO_CONCENTRAZIONE,
+		       CRTR.DATA_TRATTAMENTO AS TRATTAMENTO_DATA,
+		       CRTR.INFORMAZIONI_SUPPLEMENTARI AS TRATTAMENTO_INFORMAZIONI,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN CTR.CODICE_RUP_DESTINATARIO 
+              ELSE NULL END AS CODICE_RUP,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN CDR.DENOM_REGIONE 
+              ELSE NULL END AS REGIONE_RUP,
+		       CDUDB.DENOM_UFFICIO_DOGANALE AS LUOGO_RILASCIO,
+		       COALESCE((SELECT COALESCE(SUM(MERCE_TARIFFA.IMPORTO),0) AS TOTALE_TARIFFE
+		        FROM CAR_R_MERCE_RICHIESTA MERCE
+		          INNER JOIN CAR_R_MERCE_TARIFFA MERCE_TARIFFA ON MERCE.ID_MERCE_RICHIESTA = MERCE_TARIFFA.ID_MERCE_RICHIESTA
+		        WHERE MERCE.ID_RICHIESTA = CTR.ID_RICHIESTA), 0) + 
+		       COALESCE((
+            SELECT SUM(IMPORTO)
+            FROM CAR_R_RICHIESTA_TARIFFA
+            WHERE ID_RICHIESTA = CTR.ID_RICHIESTA), 0)  
+		        AS TARIFFA,
+		       CTR.NOTE_DATI_RICHIESTA AS NOTE,
+		       CDTP.DESC_TIPO_PRODOTTO AS MERCE_TIPO_MERCE,
+		       prodotto.denom_prodotto AS merce_desc_prodotto,
+		       LINGUA_GENERE.DENOM_GENERE AS MERCE_GENERE,
+		       LINGUA_SPECIE.DENOM_SPECIE AS MERCE_SPECIE,
+		       CDUM.COD_UNITA_MISURA AS MERCE_UNITA_MISURA,
+		       CRMR.QUANTITA AS MERCE_QUANTITA
+		FROM CAR_T_RICHIESTA CTR
+		  LEFT JOIN CAR_R_TRATTAMENTO_RICHIESTA CRTR ON CRTR.ID_RICHIESTA = CTR.ID_RICHIESTA
+		  LEFT JOIN CAR_D_TRATTAMENTO CDT ON CDT.ID_TRATTAMENTO = CRTR.ID_TRATTAMENTO
+		  LEFT JOIN CAR_T_UTENTE CTU
+		         ON (CTU.ID_UTENTE = CTR.ID_UTENTE_INSERT
+		         OR CTU.ID_UTENTE = CTR.ID_UTENTE_UPDATE)
+		  LEFT JOIN CAR_T_CERTIFICATO CTC ON CTC.ID_RICHIESTA = CTR.ID_RICHIESTA
+		  LEFT JOIN CAR_T_SPEDIZIONIERE CTS ON CTS.ID_SPEDIZIONIERE = CTU.ID_SPEDIZIONIERE
+		  LEFT JOIN CAR_T_ISPETTORE CTI ON CTI.ID_ISPETTORE = CTC.ID_ISPETTORE
+		  LEFT JOIN CAR_T_UTENTE CTUB ON CTUB.ID_UTENTE = CTI.ID_UTENTE
+		  LEFT JOIN CAR_T_UTENTE CTUC ON CTUC.ID_UTENTE = CTR.ID_UTENTE_ESECUZIONE
+		  LEFT JOIN CAR_D_UFFICIO_DOGANALE CDUDA ON CDUDA.ID_UFFICIO_DOGANALE = CTR.ID_UFFICIO_DOGANALE_ENTRATA
+		  LEFT JOIN CAR_D_STATO_RICHIESTA CDSR ON CDSR.ID_STATO_RICHIESTA = CTR.ID_STATO_RICHIESTA
+		  LEFT JOIN CAR_D_NAZIONE CDNM ON CDNM.ID_NAZIONE = CTR.ID_NAZIONE_MITTENTE
+		  LEFT JOIN CAR_D_NAZIONE CDND ON CDND.ID_NAZIONE = CTR.ID_NAZIONE_DESTINATARIO
+		  LEFT JOIN CAR_D_REGIONE CDR ON CDR.ID_REGIONE = CTR.ID_REGIONE_RUP_DESTINATARIO
+		  LEFT JOIN CAR_D_MODO_TRASPORTO CDMT ON CDMT.ID_MODO_TRASPORTO = CTR.ID_MODO_TRASPORTO
+		  LEFT JOIN CAR_D_UFFICIO_DOGANALE CDUDB ON CDUDB.ID_UFFICIO_DOGANALE = CTC.ID_UFFICIO_DOGANALE_ESECUZIONE
+		  JOIN car_d_tipo_richiesta cdtr ON cdtr.id_tipo_richiesta = ctr.id_tipo_richiesta
+		  LEFT JOIN car_d_costante cdcost ON cdcost.id_costante = 2
+		  LEFT JOIN car_d_comune cdcita ON cdcita.id_comune = ctr.id_comune_ita
+		  LEFT JOIN CAR_D_PROVINCIA CDP ON CDP.ID_PROVINCIA = cdcita.ID_PROVINCIA
+		  LEFT JOIN CAR_R_MERCE_RICHIESTA CRMR ON CRMR.ID_RICHIESTA = CTR.ID_RICHIESTA
+		  LEFT JOIN car_d_prodotto AS prodotto ON CRMR.id_prodotto = prodotto.id_prodotto 
+      LEFT JOIN car_d_tipo_prodotto CDTP ON COALESCE(CRMR.id_tipo_prodotto, prodotto.id_tipo_prodotto) = CDTP.id_tipo_prodotto
+		  LEFT JOIN (
+		    SELECT CRLG.ID_GENERE, 
+		            CRLG.DENOM_GENERE
+        FROM CAR_R_LINGUA_GENERE CRLG 
+          INNER JOIN CAR_D_LINGUA CDL
+            ON CDL.ID_LINGUA = CRLG.ID_LINGUA
+            AND UPPER (CDL.COD_LINGUA) = 'LA'
+      ) LINGUA_GENERE
+        ON CRMR.ID_GENERE = LINGUA_GENERE.ID_GENERE
+		  LEFT JOIN (
+		    SELECT CRLS.ID_SPECIE, 
+		            CRLS.DENOM_SPECIE
+        FROM CAR_R_LINGUA_SPECIE CRLS 
+          INNER JOIN CAR_D_LINGUA CDLS
+            ON CDLS.ID_LINGUA = CRLS.ID_LINGUA
+            AND UPPER (CDLS.COD_LINGUA) = 'LA'
+      ) LINGUA_SPECIE
+        ON CRMR.ID_SPECIE = LINGUA_SPECIE.ID_SPECIE
+		  LEFT JOIN CAR_D_UNITA_MISURA CDUM ON CDUM.ID_UNITA_MISURA = CDTP.ID_UNITA_MISURA
+	<where>
+		AND CTR.ID_STATO_RICHIESTA IN (3,4)
+		<if test="codTipoRichiesta != null">
+		  AND CASE WHEN UPPER(CDTR.COD_TIPO_RICHIESTA) = 'RI' 
+          THEN 'EX' ELSE UPPER(CDTR.COD_TIPO_RICHIESTA) END = UPPER(#{codTipoRichiesta})
+		</if>
+		<if test="periodoDa and periodoA != null">
+     		AND   CTR.DATA_ESECUZIONE BETWEEN #{periodoDa} AND #{periodoA}	
+   	</if>
+   	<if test="nazioneMittente != null">
+   	  <bind name="nazioneMittenteInt" value="@java.lang.Integer@valueOf( nazioneMittente )" />
+      AND CTR.ID_NAZIONE_MITTENTE = #{nazioneMittenteInt}
+   	</if>
+   	<if test="nazioneDestinatario != null">
+   	  <bind name="nazioneDestinatarioInt" value="@java.lang.Integer@valueOf( nazioneDestinatario )" />
+      AND CTR.ID_NAZIONE_DESTINATARIO = #{nazioneDestinatarioInt}
+   	</if>
+   	<if test="doganaArrivo != null">
+   	  <bind name="doganaArrivoInt" value="@java.lang.Integer@valueOf( doganaArrivo )" />
+      AND CTR.ID_UFFICIO_DOGANALE_ENTRATA = #{doganaArrivoInt}
+   	</if>
+   	<if test="luogoRilascioCertificato != null">
+   	  <bind name="luogoRilascioCertificatoInt" value="@java.lang.Integer@valueOf( luogoRilascioCertificato )" />
+      AND CTC.ID_UFFICIO_DOGANALE_ESECUZIONE = #{luogoRilascioCertificatoInt}
+   	</if>
+   	<if test="spedizioniereEnte != null">
+   	  <!--  bind name="spedizioniereEnteInt" value="@java.lang.Integer@valueOf( spedizioniereEnte )" />
+      AND CTS.ID_SPEDIZIONIERE = #{spedizioniereEnteInt}-->
+      <bind name="spedizioniere_ente" value="'%' + spedizioniereEnte + '%'" />
+      AND UPPER(CTS.denom_spedizioniere) LIKE UPPER(#{spedizioniere_ente})
+   	</if>
+   	<if test="luogoOrigineMerce != null">
+   	  <bind name="luogoOrigineMerceInt" value="@java.lang.Integer@valueOf( luogoOrigineMerce )" />
+      AND EXISTS (
+        SELECT 1
+        FROM CAR_R_MERCE_RICHIESTA CRMRA
+        WHERE CRMRA.ID_RICHIESTA = CTR.ID_RICHIESTA
+        AND   CRMRA.id_nazione_origine = #{luogoOrigineMerceInt})
+   	</if>
+   	<if test="numeroRichiesta != null">
+   	  <bind name="num_richiesta" value="'%' + numeroRichiesta" />
+			AND   CTR.COD_RICHIESTA LIKE #{num_richiesta}
+		</if>
+   	<if test="idGenere != null">
+			AND   CRMR.ID_GENERE = #{idGenere}
+		</if>
+		<if test="classeProdotto != null">
+		  <bind name="classeProdottoInt" value="@java.lang.Integer@valueOf( classeProdotto )" />
+			AND   PRODOTTO.ID_CLASSE = #{classeProdottoInt}
+		</if>
+	</where>
+	ORDER BY NUMERO_RICHIESTA ASC, CTR.ID_RICHIESTA ASC
+	</select>
+	
+	<select id="getElencoDatiSian" parameterType="it.aizoon.ersaf.form.RicercaDatiSianForm" resultType="it.aizoon.ersaf.dto.DatiSianDTO">
+		SELECT ctr.id_richiesta,
+		       #{tipoOperazione} AS tipoOperazione,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cdcost.valore_costante ||COALESCE(ctc.numero_certificato::TEXT,ctc.numero_certificato_manuale::TEXT) WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT END) AS numero,
+		       '0300' AS regione,
+		       SUBSTRING(cdtr.cod_tipo_richiesta,1,1) AS tipo,
+		       UPPER(ctr.denom_mittente) AS mittente,
+		       coalesce (ctr.codice_rup_mittente, '') as numeroRUPmittente,
+		       UPPER(ctr.indirizzo_mittente) AS indirizzoMitt,
+		       '' AS CAPmittente,
+		       CASE 
+		        WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN NULL
+		        WHEN (cdcita.denom_comune = '') IS FALSE THEN ''
+		        ELSE cdcita.cod_istat_comune END AS codComuMitt,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN NULL ELSE cdcita.denom_comune END AS comuneMitt,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN NULL ELSE cdpita.sigla_provincia END AS provinciaMitt,
+		       UPPER(ctr.denom_comune_est_mittente) AS cittaMitt,
+		       CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cdnm.cod_nazione ELSE 'IT' END AS nazioneMitt,
+		       ctr.codice_rup_destinatario AS numeroRUPdestinatario,
+		       /*cdr.denom_regione*/cdr.cod_istat_regione AS regioneRUP,
+		       cdndr.cod_nazione AS statoRUP,
+		       UPPER(ctr.denom_destinatario) AS destinatario,
+		       UPPER(ctr.indirizzo_destinatario) AS indirizzoDest,
+		       '' AS CAPdestinatario,
+		       cdc.cod_istat_comune AS codComuDest,
+		       cdc.denom_comune AS comuneDest,
+		       cdp.denom_provincia AS provinciaDest,
+		       UPPER((CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN NULL WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN ctr.denom_comune_est_destinatario WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN ctr.denom_comune_est_destinatario END)) AS cittaDest,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN 'IT' WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdnd.cod_nazione WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdnd.cod_nazione END) AS nazioneDest,
+		       cduda.cod_ufficio_doganale AS doganaArrivo,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN NULL WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdnprot.cod_nazione WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdnprot.cod_nazione END) AS paeseServizioDestinatario,
+		       (SELECT STRING_AGG(DISTINCT cdnmr.cod_nazione,', ')
+		        FROM car_r_merce_richiesta crmr,
+		             car_d_nazione cdnmr
+		        WHERE crmr.id_richiesta = ctr.id_richiesta
+		        AND   cdnmr.id_nazione = crmr.id_nazione_origine) AS luogoOrigine,
+		       cdmt.cod_modo_trasporto AS modo_trasporto,
+		       cdmt.desc_modo_trasporto AS mezzoTrasporto,
+		       ctr.identif_mezzo_trasporto AS idMezzo,
+		       UPPER(CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cduda.cod_ufficio_doganale ELSE ctr.punto_entrata_dichiarato END) AS puntoEntrata,
+		       (CASE WHEN ctc.dichiarazione_supplementare IS NULL THEN 'NO' ELSE 'SI' END) AS supplemento,
+		       (CASE WHEN cdt.id_trattamento IS NULL THEN 'NO' ELSE 'SI' END) AS trattamento,
+		       UPPER(CASE 
+		          WHEN ctc.id_ufficio_doganale_esecuzione IS NULL 
+		          THEN provincia_esecuzione.sigla_provincia
+              ELSE provincia_uff_doganale.sigla_provincia
+           END) AS provRilascio,
+		       /*CASE WHEN ctc.id_ufficio_doganale_esecuzione IS NULL THEN comune_esecuzione.id_provincia ELSE cdudb.id_provincia END AS provRilascio,*/
+           CASE WHEN ctc.id_ufficio_doganale_esecuzione IS NULL THEN comune_esecuzione.denom_comune ELSE cdudb.denom_ufficio_doganale END AS luogoRilascio,
+		       ctr.data_esecuzione AS data,
+		       cti.numero_tessera AS ispettore
+		FROM car_t_richiesta ctr
+		  LEFT JOIN car_r_trattamento_richiesta crtr ON crtr.id_richiesta = ctr.id_richiesta
+		  LEFT JOIN car_d_trattamento cdt ON cdt.id_trattamento = crtr.id_trattamento
+		  JOIN car_t_certificato ctc ON ctc.id_richiesta = ctr.id_richiesta
+		  LEFT JOIN car_t_ispettore cti ON cti.id_ispettore = ctc.id_ispettore
+		  LEFT JOIN car_d_ufficio_doganale cduda ON cduda.id_ufficio_doganale = ctr.id_ufficio_doganale_entrata
+		  LEFT JOIN car_d_nazione cdnm ON cdnm.id_nazione = ctr.id_nazione_mittente
+		  LEFT JOIN car_d_nazione cdnd ON cdnd.id_nazione = ctr.id_nazione_destinatario
+		  LEFT JOIN car_d_nazione cdndr ON cdndr.id_nazione = ctr.id_nazione_rup_destinatario
+		  LEFT JOIN car_d_nazione cdnprot ON cdnprot.id_nazione = ctr.id_nazione_prot_veg_destinat
+		  LEFT JOIN car_d_comune cdc ON cdc.id_comune = ctr.id_comune_destinatario
+		  LEFT JOIN car_d_comune cdcita ON cdcita.id_comune = ctr.id_comune_ita
+		  LEFT JOIN car_d_provincia cdp ON cdp.id_provincia = cdc.id_provincia
+		  LEFT JOIN car_d_provincia cdpita ON cdpita.id_provincia = cdcita.id_provincia
+		  LEFT JOIN car_d_regione cdr ON cdr.id_regione = ctr.id_regione_rup_destinatario
+		  LEFT JOIN car_d_modo_trasporto cdmt ON cdmt.id_modo_trasporto = ctr.id_modo_trasporto
+		  LEFT JOIN car_d_ufficio_doganale cdudb ON cdudb.id_ufficio_doganale = ctc.id_ufficio_doganale_esecuzione
+		  LEFT OUTER JOIN car_d_provincia AS provincia_uff_doganale ON cdudb.id_provincia = provincia_uff_doganale.id_provincia
+		  LEFT OUTER JOIN car_d_comune AS comune_esecuzione 
+        ON ctc.id_comune_esecuzione = comune_esecuzione.id_comune
+      LEFT OUTER JOIN car_d_provincia AS provincia_esecuzione 
+        ON comune_esecuzione.id_provincia = provincia_esecuzione.id_provincia
+		  LEFT JOIN car_d_costante cdcost ON cdcost.id_costante = 2
+		  JOIN car_d_tipo_richiesta cdtr
+		    ON cdtr.id_tipo_richiesta = ctr.id_tipo_richiesta
+	  <where>
+		AND CTR.ID_STATO_RICHIESTA IN (3,4)
+		<if test="codTipoRichiesta != null">
+		  AND CASE WHEN UPPER(CDTR.COD_TIPO_RICHIESTA) = 'RI' 
+          THEN 'EX' ELSE UPPER(CDTR.COD_TIPO_RICHIESTA) END = UPPER(#{codTipoRichiesta})
+		</if>
+		<if test="periodoDa != null and periodoA != null">
+      		AND   CTR.DATA_ESECUZIONE BETWEEN #{periodoDa} AND #{periodoA}
+    	</if>
+    	<if test="nazioneMittente != null">
+      		AND   CTR.ID_NAZIONE_MITTENTE = #{nazioneMittente}::smallint
+    	</if>
+    	<if test="nazioneDestinatario != null">
+    	   AND CASE 
+    	     WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN (
+    	       SELECT id_nazione 
+    	       FROM car_d_nazione 
+    	       WHERE upper(cod_nazione) = 'IT') 
+    	     ELSE CTR.ID_NAZIONE_DESTINATARIO END = '1'::smallint
+    	</if>
+    	<if test="doganaArrivo != null">
+      		AND   CTR.ID_UFFICIO_DOGANALE_ENTRATA = #{doganaArrivo}::smallint
+    	</if>
+    	<if test="luogoRilascioCertificato != null">
+      		AND   CTC.ID_UFFICIO_DOGANALE_ESECUZIONE = #{luogoRilascioCertificato}::smallint
+    	</if>
+    	<if test="luogoOrigineMerce != null">
+      		AND EXISTS (SELECT 1
+	              FROM CAR_R_MERCE_RICHIESTA CRMRA
+	              WHERE CRMRA.ID_RICHIESTA = CTR.ID_RICHIESTA
+	              AND   CRMRA.id_nazione_origine = #{luogoOrigineMerce}::smallint)
+    	</if>
+	  </where>
+	  ORDER BY NUMERO ASC, CTR.ID_RICHIESTA ASC
+	</select>
+	
+	
+	<select id="getMerciPerDatiSian" parameterType="it.aizoon.ersaf.form.RicercaDatiSianForm" resultType="it.aizoon.ersaf.dto.MerceRichiestaDatiSianDTO">
+		SELECT id_richiesta,
+		       numero,
+		       UPPER(marchio) as marchio,
+		       numcolli as num_colli,
+		       natura,
+		       classe,
+		       codiceprodotto as codice_prodotto,
+		       codicebayer as codice_bayer,
+		       cod_nazione,
+		       um,
+		       quantita
+		FROM (SELECT CTR.ID_RICHIESTA,
+		             cdcost.valore_costante || 
+		             CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' 
+		                THEN COALESCE(ctc.numero_certificato::TEXT,ctc.numero_certificato_manuale::TEXT) 
+		                ELSE ctc.numero_certificato_manuale::TEXT END AS numero,
+		             CRMR.marchio AS marchio,
+		             CRMR.numero_colli AS numColli,
+		             CDNC.cod_natura_collo AS natura,
+		             CDC.cod_classe AS classe,
+		             CDP.cod_prodotto AS codiceProdotto,
+		             (CASE WHEN CRMR.id_specie IS NOT NULL THEN (SELECT COD_SPECIE
+		                                                         FROM CAR_D_SPECIE
+		                                                         WHERE ID_SPECIE = CRMR.id_specie)ELSE (SELECT COD_GENERE
+		                                                                                                FROM CAR_D_GENERE
+		                                                                                                WHERE ID_GENERE = CRMR.id_GENERE)END) AS codiceBayer,
+		             cdnprot.cod_nazione,
+		             CDUM.COD_UNITA_MISURA AS um,
+		             /*REPLACE(TO_CHAR(*/ROUND(CRMR.QUANTITA, 2)/*, 'FM999999999.90'), '.', ',')*/ AS QUANTITA
+		      FROM CAR_T_RICHIESTA CTR
+		        JOIN CAR_R_MERCE_RICHIESTA CRMR ON CRMR.ID_RICHIESTA = CTR.ID_RICHIESTA
+		        JOIN car_t_certificato ctc ON ctc.id_richiesta = ctr.id_richiesta
+		        LEFT JOIN car_d_prodotto prodotto
+              ON CRMR.id_prodotto = prodotto.id_prodotto
+            LEFT JOIN CAR_D_TIPO_PRODOTTO CDTP 
+              ON prodotto.ID_TIPO_PRODOTTO = CDTP.ID_TIPO_PRODOTTO
+		        LEFT JOIN CAR_D_UNITA_MISURA CDUM ON CDUM.ID_UNITA_MISURA = CDTP.ID_UNITA_MISURA
+		        LEFT JOIN CAR_D_PRODOTTO CDP ON CDP.ID_PRODOTTO = CRMR.ID_PRODOTTO
+		        LEFT JOIN CAR_D_NATURA_COLLO CDNC ON CDNC.id_natura_collo = CRMR.id_natura_collo
+		        LEFT JOIN car_d_nazione cdnprot ON cdnprot.id_nazione = CRMR.id_nazione_origine
+		        LEFT JOIN CAR_D_CLASSE CDC ON CDC.id_classe = CDP.id_classe
+		        LEFT JOIN car_d_costante cdcost ON cdcost.id_costante = 2
+		        JOIN car_d_tipo_richiesta cdtr
+		          ON cdtr.id_tipo_richiesta = ctr.id_tipo_richiesta
+		            AND CASE WHEN UPPER(CDTR.COD_TIPO_RICHIESTA) = 'RI' 
+                  THEN 'EX' ELSE UPPER(CDTR.COD_TIPO_RICHIESTA) END = UPPER(#{codTipoRichiesta})
+			  WHERE CTR.ID_RICHIESTA IN
+				  <foreach item="item" index="index" collection="listIntIdRichiesta"
+	             	open="(" separator="," close=")">#{item}
+	   			  </foreach>
+			  <if test="codiceProdotto != null">
+			  	AND   upper(CDP.cod_prodotto) = upper(#{codiceProdotto})
+			  </if>
+			  <if test="classeProdotto != null">
+          AND   CDP.ID_CLASSE = #{classeProdotto}::smallint
+        </if>
+        <if test="marchioProdotto != null">
+          AND   upper(CRMR.marchio) = upper(#{marchioProdotto})
+        </if>
+      ) A
+		<where>
+			<if test="codiceBayer != null">
+				AND   upper(codiceBayer) = upper(#{codiceBayer})
+			</if>
+		</where>
+		ORDER BY A.NUMERO ASC, A.ID_RICHIESTA ASC
+	</select>
+	
+	<select id="getDatiRiexportSian" parameterType="it.aizoon.ersaf.form.RicercaDatiSianForm" resultType="it.aizoon.ersaf.dto.RiexportDatiSianDTO">
+		SELECT CTR.ID_RICHIESTA,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cdcost.valore_costante ||COALESCE(ctc.numero_certificato::TEXT,ctc.numero_certificato_manuale::TEXT) WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdcost.valore_costante ||ctc.numero_certificato_manuale::TEXT END) AS numero,
+		       cdnprot.cod_nazione AS paeseRiesp,
+		       (SELECT STRING_AGG(DISTINCT cdnmr.cod_nazione,', ')
+		        FROM car_r_merce_richiesta crmr,
+		             car_d_nazione cdnmr
+		        WHERE crmr.id_richiesta = ctr.id_richiesta
+		        AND   cdnmr.id_nazione = crmr.id_nazione_origine) AS paeseOrigine,
+		       ctr.numero_certificato_originale AS numCertOrigine
+		FROM car_t_richiesta ctr
+		  JOIN car_t_certificato ctc ON ctc.id_richiesta = ctr.id_richiesta
+		  LEFT JOIN car_d_nazione cdnprot ON cdnprot.id_nazione = ctr.id_nazione_prot_veg_destinat
+		  LEFT JOIN car_d_costante cdcost ON cdcost.id_costante = 2
+		  JOIN car_d_tipo_richiesta cdtr
+		    ON cdtr.id_tipo_richiesta = ctr.id_tipo_richiesta
+		   AND UPPER(cdtr.COD_TIPO_RICHIESTA) = 'RI'
+		WHERE CTR.ID_RICHIESTA IN
+			<foreach item="item" index="index" collection="listIntIdRichiesta"
+               open="(" separator="," close=")">#{item}
+   			 </foreach>
+		ORDER BY NUMERO ASC, CTR.ID_RICHIESTA ASC
+	</select>
+	
+	<select id="getUtentiDaAbilitare" resultType="it.aizoon.ersaf.dto.ProfiloNonAutorizzatoDTO">
+		    <![CDATA[SELECT UTENTE.NOME || ' ' || UTENTE.COGNOME AS DENOMINAZIONE,       
+		    UTENTE.ID_UTENTE AS ID_UTENTE,       0 AS ID_SPEDIZIONIERE,       0 AS ID_ISPETTORE,       
+		    UTENTE.DATA_INSERIMENTO AS DATA_INSERT 
+		    FROM CAR_T_UTENTE UTENTE
+		    WHERE MODIFICATO_ADMIN IS NOT TRUE AND 
+		    NOT EXISTS (SELECT 1 FROM CAR_T_ISPETTORE WHERE ID_UTENTE = UTENTE.ID_UTENTE)  
+		    UNION 
+		    SELECT DENOM_SPEDIZIONIERE AS DENOMINAZIONE,       0 AS ID_UTENTE,       ID_SPEDIZIONIERE AS ID_SPEDIZIONIERE,       
+		    0 AS ID_ISPETTORE,       DATA_INSERT AS DATA_INSERT
+		    FROM CAR_T_SPEDIZIONIERE 
+		    WHERE MODIFICATO_ADMIN IS NOT TRUE 
+		    UNION
+		    SELECT UTENTE.NOME || ' ' || UTENTE.COGNOME AS DENOMINAZIONE,       0 AS ID_UTENTE,       
+		    0 AS ID_SPEDIZIONIERE,       ISPETTORE.ID_ISPETTORE AS ID_ISPETTORE,       DATA_INSERIMENTO AS DATA_INSERT 
+		    FROM CAR_T_ISPETTORE ISPETTORE,     CAR_T_UTENTE UTENTE
+		    WHERE ISPETTORE.ID_UTENTE = UTENTE.ID_UTENTE AND   UTENTE.MODIFICATO_ADMIN IS NOT TRUE 
+		    ORDER BY DATA_INSERT ASC, DENOMINAZIONE ASC]]>
+  </select>
+
+</mapper>

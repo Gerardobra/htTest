@@ -1,0 +1,661 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.StampeMapper">
+
+<select id="getPdfNullaOsta" resultType="it.aizoon.ersaf.dto.stampe.NullaOstaDTO">
+  <![CDATA[
+    SELECT UPPER(denom_mittente || ' ' || indirizzo_mittente || ' ' || denom_comune_est_mittente || ' ' || nazione_mittente.denom_nazione) AS nomeIndirizzoEsportatore,
+       UPPER(denom_destinatario || ' ' || indirizzo_destinatario || ' ' || comune_destinatario.denom_comune) AS nomeIndirizzoDestinatario,
+       UPPER(doganaRich.denom_ufficio_doganale) AS dogana,
+       UPPER(merci.desc_nazione_origine) AS luogoDiOrigine,
+       UPPER(desc_modo_trasporto) AS mezzoDiTrasporto,
+       UPPER(identif_mezzo_trasporto) AS numDocDiTrasporto,
+       UPPER(merci.colli) AS colli,
+       merci.quantitaDichiarata,
+       UPPER(merci.infoVariePagina2) AS infoVariePagina2,
+       UPPER(dogana_punto_entrata.denom_ufficio_doganale) AS puntoDiEntrata,
+       UPPER(codice_rup_destinatario) AS rup,
+       UPPER(car_d_regione.denom_regione) AS regione,
+       UPPER(COALESCE(car_t_certificato.note,car_t_richiesta.note_dati_richiesta)) AS annotazioniGenerali,
+       COALESCE(UPPER(trattamento.desc_trattamento),LPAD('',70,'*')) AS trattamento,
+       UPPER((SELECT valore_costante FROM car_d_costante WHERE cod_costante = 'COD_NULLAO') ||(SELECT valore_costante FROM car_d_costante WHERE cod_costante = 'COD_PAE_EM') ||EXTRACT(year FROM car_t_certificato.data_esecuzione) || CASE WHEN LENGTH(regione_ispet_firm.cod_istat_regione) >= 2 THEN SUBSTRING(regione_ispet_firm.cod_istat_regione FROM 1 FOR 2) ELSE '00' END||COALESCE(provincia_ispet_firm.sigla_provincia,'XX') || CASE WHEN LENGTH(ispettore_firmatario.numero_tessera) >= 3 THEN SUBSTRING(ispettore_firmatario.numero_tessera FROM 1 FOR 3) ELSE '000' END|| LPAD(CASE WHEN car_t_certificato.numero_certificato IS NOT NULL THEN car_t_certificato.numero_certificato ELSE car_t_certificato.numero_certificato_manuale END,6,'0')) AS codiceCertificato,
+       COALESCE(UPPER(prodotto_chimico),LPAD('',35,'*')) AS prodottoChimico,
+       COALESCE(UPPER(temperatura),LPAD('',35,'*')) AS durataTemperatura,
+       COALESCE(UPPER(concentrazione),LPAD('',35,'*')) AS concentrazione,
+       data_trattamento AS dataTrattamento,
+       COALESCE(UPPER(informazioni_supplementari),LPAD('',70,'*')) AS informazioniSupplementari,
+       UPPER(doganaCert.denom_ufficio_doganale) AS luogoDelRilascio,
+       car_t_certificato.data_esecuzione AS dataRilascio,
+       UPPER(ispettore_firmatario.numero_tessera || ' - ' || utente_ispettore_firmatario.nome || ' ' || utente_ispettore_firmatario.cognome) AS ispettoreFirmatario
+	from car_t_richiesta 
+	left outer join car_t_certificato on car_t_richiesta.id_richiesta = car_t_certificato.id_richiesta
+  left outer join car_d_regione on car_t_richiesta.id_regione_rup_destinatario = car_d_regione.id_regione
+  LEFT OUTER JOIN car_d_ufficio_doganale AS dogana_punto_entrata ON car_t_richiesta.id_ufficio_doganale_utilizzato = dogana_punto_entrata.id_ufficio_doganale 
+  left outer join (
+    SELECT id_richiesta,
+            string_agg(DISTINCT denom_nazione, ' / ') AS desc_nazione_origine,
+            string_agg(replace(to_char(quantita, 'FM9999999999990.990'), '.', ',') || ' ' || cod_unita_misura
+              , '<BR>') FILTER (WHERE num_riga <= 10) AS quantitaDichiarata,
+            string_agg(CASE WHEN LENGTH(collo) > 95 THEN SUBSTRING(collo FROM 1 FOR 95) ELSE collo END  
+              , '<BR>') FILTER (WHERE num_riga <= 10) AS colli,
+            string_agg(CASE WHEN LENGTH(collo) > 110 THEN SUBSTRING(collo FROM 1 FOR 110) ELSE collo END 
+              || '/' || replace(to_char(quantita, 'FM9999999999990.990'), '.', ',') || ' ' || cod_unita_misura
+              , '<BR>') FILTER (WHERE num_riga > 10) AS infoVariePagina2
+    FROM (
+      SELECT merce.id_richiesta, 
+              row_number() over (partition by merce.id_richiesta ORDER BY denom_nazione, id_merce_richiesta) AS num_riga,
+              nazione_origine.denom_nazione,
+              quantita,
+              unita_misura.cod_unita_misura,
+              CASE 
+                WHEN specie.id_specie IS NOT NULL AND position(upper(genere.denom_genere) in upper(specie.denom_specie)) = 0 
+                  THEN genere.denom_genere || ' - ' || specie.denom_specie 
+                WHEN specie.id_specie IS NOT NULL THEN specie.denom_specie
+                ELSE genere.denom_genere END || ' - ' || prodotto.denom_prodotto  
+              AS collo
+      FROM car_r_merce_richiesta merce
+	      LEFT OUTER JOIN car_d_prodotto prodotto
+	        ON merce.id_prodotto = prodotto.id_prodotto
+	      LEFT OUTER JOIN car_d_tipo_prodotto tipo_prodotto
+          ON prodotto.id_tipo_prodotto = tipo_prodotto.id_tipo_prodotto
+        LEFT OUTER JOIN car_d_unita_misura unita_misura
+          ON tipo_prodotto.id_unita_misura = unita_misura.id_unita_misura
+	      LEFT OUTER JOIN car_d_lingua lingua
+	        ON UPPER(lingua.cod_lingua) = 'LA'
+	      LEFT OUTER JOIN car_r_lingua_genere genere
+	        ON merce.id_genere = genere.id_genere
+	        AND lingua.id_lingua = genere.id_lingua
+	      LEFT OUTER JOIN car_r_lingua_specie specie
+	        ON merce.id_specie = specie.id_specie
+	        AND lingua.id_lingua = specie.id_lingua
+	      LEFT JOIN car_d_nazione as nazione_origine on merce.id_nazione_origine = nazione_origine.id_nazione
+	      WHERE merce.id_richiesta = #{idRichiesta}
+	      ORDER BY denom_nazione, id_merce_richiesta
+    ) AS merci
+    GROUP BY id_richiesta
+  ) merci
+    on car_t_richiesta.id_richiesta = merci.id_richiesta 
+  left outer join car_r_trattamento_richiesta on car_t_richiesta.id_richiesta = car_r_trattamento_richiesta.id_richiesta
+  LEFT OUTER JOIN car_d_trattamento AS trattamento on car_r_trattamento_richiesta.id_trattamento = trattamento.id_trattamento
+  left outer join car_d_modo_trasporto on car_t_richiesta.id_modo_trasporto = car_d_modo_trasporto.id_modo_trasporto
+  left outer join car_d_ufficio_doganale doganaRich on doganaRich.id_ufficio_doganale = car_t_richiesta.id_ufficio_doganale_entrata
+  left outer join car_d_ufficio_doganale doganaCert on doganaCert.id_ufficio_doganale = car_t_certificato.id_ufficio_doganale_esecuzione
+  left outer join car_d_comune as comune_destinatario on id_comune_ita = comune_destinatario.id_comune 
+  left outer join car_d_nazione as nazione_mittente on id_nazione_mittente = nazione_mittente.id_nazione
+	  LEFT OUTER JOIN car_t_ispettore AS ispettore_firmatario
+      ON car_t_certificato.id_ispettore = ispettore_firmatario.id_ispettore
+    LEFT OUTER JOIN car_t_utente AS utente_ispettore_firmatario
+      ON ispettore_firmatario.id_utente = utente_ispettore_firmatario.id_utente
+	  LEFT OUTER JOIN car_d_comune AS comune_ispet_firm
+      ON ispettore_firmatario.id_comune_ufficio = comune_ispet_firm.id_comune
+	  LEFT OUTER JOIN car_d_provincia AS provincia_ispet_firm
+      ON comune_ispet_firm.id_provincia = provincia_ispet_firm.id_provincia
+	  LEFT OUTER JOIN car_d_regione AS regione_ispet_firm
+      ON provincia_ispet_firm.id_regione = regione_ispet_firm.id_regione
+	where car_t_richiesta.id_richiesta = #{idRichiesta}
+	]]>
+</select>
+
+<select id="getPdfEverde" resultType="it.aizoon.ersaf.dto.stampe.EverdeDTO">
+	SELECT CTR.ID_RICHIESTA,
+       CTR.COD_RICHIESTA AS VERBALE,
+       CTR.DATA_ESECUZIONE AS INDATA,
+       'sottoscritto1' AS SOTTOSCRITTI,
+       'sottoscritto2' AS SOTTOSCRITTI2,
+       'sottoscritto3' AS SOTTOSCRITTI3,
+       UPPER(CTR.PUNTO_ENTRATA_DICHIARATO) AS PUNTO_ENTRATA,
+       UPPER(CDUDA.DENOM_UFFICIO_DOGANALE) AS MAGAZZINODOGANALE,
+       UPPER(CTS.DENOM_SPEDIZIONIERE) AS DENOM_SPEDIZIONIERE,
+       UPPER(CTR.DENOM_MITTENTE) || ' / ' ||UPPER(CTR.INDIRIZZO_MITTENTE) || ' / ' ||UPPER(CTR.DENOM_COMUNE_EST_MITTENTE) ||COALESCE(' / ' ||UPPER(CDNM.DENOM_NAZIONE),'') AS MITTENTE,
+       UPPER(CTR.DENOM_DESTINATARIO) || ' / ' ||UPPER(CTR.INDIRIZZO_DESTINATARIO) ||COALESCE(' / ' ||UPPER(CDC.DENOM_COMUNE),'') AS DESTINATARIO,
+       CTR.COD_RICHIESTA AS RILASCIATONULLAOSTAIMPORTAZIONE,
+       /* dati ispezione */ 
+       COALESCE(costante_dati_ispezione.valore_costante,'') AS dati_ispezione,
+       COALESCE(TO_CHAR(verbale.data_ispezione,'dd/MM/yyyy'),'XX/XX/XXXX') AS data_ispezione,
+       COALESCE(TO_CHAR(verbale.ora_inizio_ispezione,'HH24:MI'),'XX:XX') AS ora_inizio_ispezione,
+       COALESCE(TO_CHAR(verbale.ora_fine_ispezione,'HH24:MI'),'XX:XX') AS ora_fine_ispezione,
+       COALESCE(UPPER(dogana_utilizzato.denom_ufficio_doganale),'XXXXXXX') AS descUfficioDoganaleUtilizzato,
+       COALESCE(UPPER(verbale.magazzino_doganale),'XXXXXXX') AS magazzino_doganale,
+       COALESCE(UPPER(verbale.delegato_presente_ispezione),'XXXXXXX') AS delegato_presente_ispezione,
+       COALESCE(UPPER(verbale.delegato_presente_ruolo),'XXXXXXX') AS delegato_presente_ruolo,
+       /* dati spedizione */ 
+       CASE
+         WHEN verbale.flg_piante_vive THEN 'x'
+         ELSE ''
+       END AS flg_piante_vive,
+       CASE
+         WHEN verbale.flg_parti_piante_vive THEN 'x'
+         ELSE ''
+       END AS flg_parti_vive,
+       CASE
+         WHEN verbale.flg_sementi THEN 'x'
+         ELSE ''
+       END AS flg_sementi,
+       CASE
+         WHEN verbale.flg_semi THEN 'x'
+         ELSE ''
+       END AS flg_semi,
+       CASE
+         WHEN verbale.flg_terra_terriccio THEN 'x'
+         ELSE ''
+       END AS flg_terra,
+       CASE
+         WHEN verbale.flg_corteccia THEN 'x'
+         ELSE ''
+       END AS flg_corteccia,
+       CASE
+         WHEN verbale.flg_legname THEN 'x'
+         ELSE ''
+       END AS flg_legname,
+       CASE
+         WHEN verbale.flg_frutti THEN 'x'
+         ELSE ''
+       END AS flg_frutti,
+       CASE
+         WHEN verbale.flg_fiori_recisi THEN 'x'
+         ELSE ''
+       END AS flg_fiori,
+       CASE
+         WHEN verbale.flg_imbal_legno THEN 'x'
+         ELSE ''
+       END AS flg_imballaggi,
+       CASE
+         WHEN verbale.flg_altro THEN 'x'
+         ELSE ''
+       END AS flg_altro,
+       CASE
+         WHEN verbale.flg_altro THEN COALESCE(UPPER(verbale.altra_tipologia_prodotto),'XXXXXX')
+         ELSE ''
+       END AS altro,
+       COALESCE(UPPER(ctr.identif_mezzo_trasporto),'') AS awb,
+       UPPER(COALESCE(CTC.NUMERO_CERTIFICATO::VARCHAR, CTC.NUMERO_CERTIFICATO_MANUALE, '')) AS certificato_fitosanitario,
+       COALESCE(TO_CHAR(ctc.data_esecuzione,'dd/MM/yyyy'),'') AS data_cert_fitosanitario,
+       COALESCE(UPPER(verbale.altra_documentazione_allegata),'') AS altra_doc,
+       (SELECT string_agg(distinct cdn.cod_nazione, ' | ') 
+       	FROM car_r_merce_richiesta crmr INNER JOIN car_d_nazione cdn ON crmr.id_nazione_origine = cdn.id_nazione
+       	WHERE crmr.id_richiesta = #{idRichiesta}
+       	GROUP BY id_richiesta) AS paeseOrigineProvenienza,
+       /* dati controllo ed esito */ 
+       CASE
+         WHEN esito_documentale.id_tipo_controllo IS NOT NULL THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_documentale,
+       CASE
+         WHEN esito_documentale.id_tipo_controllo IS NOT NULL AND esito_documentale.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_documentale_fav,
+       CASE
+         WHEN esito_documentale.id_tipo_controllo IS NOT NULL AND NOT esito_documentale.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_documentale_not_fav,
+       CASE
+         WHEN esito_documentale.id_tipo_controllo IS NOT NULL AND NOT esito_documentale.esito_favorevole THEN COALESCE(UPPER(esito_documentale.motivo_esito_non_favorevole),'')
+         ELSE ''
+       END AS non_favorevole1,
+       CASE
+         WHEN esito_identita.id_tipo_controllo IS NOT NULL THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_identita,
+       CASE
+         WHEN esito_identita.id_tipo_controllo IS NOT NULL AND esito_identita.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_identita_fav,
+       CASE
+         WHEN esito_identita.id_tipo_controllo IS NOT NULL AND NOT esito_identita.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_identita_not_fav,
+       CASE
+         WHEN esito_identita.id_tipo_controllo IS NOT NULL AND NOT esito_identita.esito_favorevole THEN COALESCE(UPPER(esito_identita.motivo_esito_non_favorevole),'')
+         ELSE ''
+       END AS non_favorevole2,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_fitosanitario,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL AND esito_fitosanitario.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_fitosanitario_fav,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL AND NOT esito_fitosanitario.esito_favorevole THEN 'x'
+         ELSE ''
+       END AS flg_ctrl_fitosanitario_not_fav,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL AND esito_fitosanitario.ispezione_visiva THEN 'x'
+         ELSE ''
+       END AS flg_isp_visiva,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL AND esito_fitosanitario.ispezione_strumentale THEN 'x'
+         ELSE ''
+       END AS flg_strumentale,
+       CASE
+         WHEN esito_fitosanitario.id_tipo_controllo IS NOT NULL AND esito_fitosanitario.ispezione_strumentale THEN COALESCE(UPPER(esito_fitosanitario.strumento_ispezione),'')
+         ELSE ''
+       END AS ispezione_strumentale,
+       COALESCE(costante_dati_ctrl_esito.valore_costante,'') AS testo_ctrl_ed_esito,
+       COALESCE(UPPER(verbale.codice_campione),'XXXXXXX') AS codici_campioni,
+       campioni.quantita_analizzati AS num_prelievi,
+       COALESCE(UPPER(verbale.prelievo_per_ricerca),'XXXX') AS prelievo_per_ricerca,
+       CASE
+         WHEN verbale.ditta_assiste_analisi_lab THEN 'x'
+         ELSE ''
+       END AS flg_analisi,
+       CASE
+         WHEN NOT verbale.ditta_assiste_analisi_lab THEN 'x'
+         ELSE ''
+       END AS flg_analisi_not,
+       CASE
+         WHEN verbale.consulto_respons_filosanit THEN 'x'
+         ELSE ''
+       END AS flg_consulto_resp,
+       CASE
+         WHEN NOT verbale.consulto_respons_filosanit THEN 'x'
+         ELSE ''
+       END AS flg_consulto_resp_not,
+       CASE
+         WHEN verbale.allegato_consulto THEN 'x'
+         ELSE ''
+       END AS flg_allegato,
+       CASE
+         WHEN NOT verbale.allegato_consulto THEN 'x'
+         ELSE ''
+       END AS flg_allegato_not,
+       CASE
+         WHEN verbale.nullaosta_rilasciato THEN 'x'
+         ELSE ''
+       END AS flg_rilasciato_nulla_osta_imp,
+       CASE
+         WHEN verbale.nullaosta_rilasciato THEN COALESCE(UPPER(ctc.numero_certificato),'')
+         ELSE ''
+       END AS rilasciato_nulla_osta_importazione,
+       CASE
+         WHEN NOT verbale.nullaosta_rilasciato THEN 'x'
+         ELSE ''
+       END AS flg_not_rilasciato_nulla_osta_imp,
+       CASE
+         WHEN NOT verbale.nullaosta_rilasciato THEN COALESCE(UPPER(verbale.motivo_non_rilascio_nullaosta),'')
+         ELSE ''
+       END AS non_rilasciato_nulla_osta_importazione,
+       /* dati misure ufficiali */ 
+       CASE
+         WHEN verbale.disposta_misura_uffic THEN 'x'
+         ELSE ''
+       END AS flg_misura_ufficiale,
+       CASE
+         WHEN verbale.disposta_misura_uffic THEN COALESCE(UPPER(verbale.motivo_disposta_misura_uffic),'')
+         ELSE ''
+       END AS disposta_misura_ufficiale,
+       CASE
+         WHEN verbale.spedizione_rifiutata THEN 'x'
+         ELSE ''
+       END AS flg_mu_a,
+       CASE
+         WHEN verbale.spedizione_rifiutata THEN COALESCE(UPPER(verbale.motivo_rifiuto_spedizione),'')
+         ELSE ''
+       END AS rifiuto_spedizione,
+       CASE
+         WHEN verbale.trasp_esterno_comun THEN 'x'
+         ELSE ''
+       END AS flg_mu_b,
+       CASE
+         WHEN verbale.trasp_esterno_comun THEN COALESCE(UPPER(verbale.motivo_trasp_esterno_comun),'')
+         ELSE ''
+       END AS trasporto_comunita,
+       CASE
+         WHEN verbale.prodotti_infetti_rimossi THEN 'x'
+         ELSE ''
+       END AS flg_mu_c,
+       CASE
+         WHEN verbale.prodotti_infetti_rimossi THEN COALESCE(UPPER(verbale.motivo_rimoz_prodotti_infetti),'')
+         ELSE ''
+       END AS rimozione_prodotti_infestati,
+       CASE
+         WHEN verbale.distrutto THEN 'x'
+         ELSE ''
+       END AS flg_mu_d,
+       CASE
+         WHEN verbale.distrutto THEN COALESCE(UPPER(verbale.motivo_distruzione),'')
+         ELSE ''
+       END AS distruzione,
+       CASE
+         WHEN verbale.quarantena THEN 'x'
+         ELSE ''
+       END AS flg_mu_e,
+       CASE
+         WHEN verbale.trattamento_adeguato THEN 'x'
+         ELSE ''
+       END AS flg_mu_f,
+       CASE
+         WHEN verbale.trattamento_adeguato THEN COALESCE(UPPER(verbale.motivo_trattamento_adeguato),'')
+         ELSE ''
+       END AS trattamento_adeguato,
+       /* dati custodia */ 
+       COALESCE(costante_dati_custodia.valore_costante,'') AS dati_custodia,
+       COALESCE(UPPER(verbale.custode_merce_mis_uffic),'XXXX') AS custode_merce_mis_uffic,
+       COALESCE(UPPER(verbale.documento_identita_custode),'XXXX') AS documento_identita_custode,
+       COALESCE(UPPER(verbale.ruolo_custode),'XXXX') AS ruolo_custode,
+       COALESCE(UPPER(verbale.locali_custodia),'XXXX') AS locali_custodia,
+       /* dati dichiarazioni e note */ 
+       COALESCE(costante_dati_dich_note.valore_costante,'') AS dati_dich_e_note,
+       COALESCE(UPPER(verbale.copia_verb_consegnato_pers),'XXXX') AS copia_verb_consegnato_pers,
+       COALESCE(UPPER(verbale.ruolo_persona),'XXXX') AS ruolo_persona,
+       COALESCE(UPPER(verbale.dichiarazione_persona),'XXXX') AS dichiarazione_persona,
+       COALESCE(UPPER(verbale.note),'XXXX') AS note,
+       UPPER(verbale.delegato_presente_ispezione) AS la_parte
+	FROM CAR_T_RICHIESTA CTR
+	  LEFT JOIN CAR_T_UTENTE CTU ON CTU.ID_UTENTE = CTR.ID_UTENTE_INSERT
+	  LEFT JOIN CAR_T_CERTIFICATO CTC ON CTC.ID_RICHIESTA = CTR.ID_RICHIESTA
+	  LEFT JOIN CAR_T_SPEDIZIONIERE CTS ON CTS.ID_SPEDIZIONIERE = CTU.ID_SPEDIZIONIERE
+	  LEFT JOIN CAR_D_UFFICIO_DOGANALE CDUDA ON CDUDA.ID_UFFICIO_DOGANALE = CTR.ID_UFFICIO_DOGANALE_ENTRATA
+	  LEFT JOIN CAR_D_NAZIONE CDNM ON CDNM.ID_NAZIONE = CTR.ID_NAZIONE_MITTENTE
+	  LEFT JOIN CAR_D_COMUNE CDC ON CDC.ID_COMUNE = CTR.ID_COMUNE_DESTINATARIO
+	  LEFT JOIN car_t_verbale_ispezione verbale 
+      ON ctc.id_certificato = verbale.id_certificato
+    LEFT JOIN car_d_costante costante_dati_ispezione 
+      ON UPPER(costante_dati_ispezione.cod_costante) = 'DATI_ISPEZ'
+    LEFT JOIN car_d_costante costante_dati_ctrl_esito 
+      ON UPPER(costante_dati_ctrl_esito.cod_costante) = 'DATI_CTRL_ESITO'
+    LEFT JOIN car_d_costante costante_dati_custodia 
+      ON UPPER(costante_dati_custodia.cod_costante) = 'DATI_CUSTODIA'
+    LEFT JOIN car_d_costante costante_dati_dich_note 
+      ON UPPER(costante_dati_dich_note.cod_costante) = 'DATI_DICH_NOTE'
+    LEFT JOIN car_d_ufficio_doganale dogana_utilizzato 
+      ON ctr.id_ufficio_doganale_utilizzato = dogana_utilizzato.id_ufficio_doganale
+    LEFT JOIN car_r_esito_tipo_controllo esito_documentale
+      ON verbale.id_verbale_ispezione = esito_documentale.id_verbale_ispezione
+      AND esito_documentale.id_tipo_controllo = 1
+    LEFT JOIN car_r_esito_tipo_controllo esito_identita
+      ON verbale.id_verbale_ispezione = esito_identita.id_verbale_ispezione
+      AND esito_identita.id_tipo_controllo = 2
+    LEFT JOIN car_r_esito_tipo_controllo esito_fitosanitario
+      ON verbale.id_verbale_ispezione = esito_fitosanitario.id_verbale_ispezione
+      AND esito_fitosanitario.id_tipo_controllo = 3
+    LEFT JOIN (
+      SELECT id_verbale_ispezione ,
+      SUM(quantita_analizzati) AS quantita_analizzati
+      FROM car_r_campionamento_partita
+      GROUP BY id_verbale_ispezione
+    ) campioni
+      ON verbale.id_verbale_ispezione = campioni.id_verbale_ispezione
+	WHERE CTR.id_richiesta = #{idRichiesta}
+	ORDER BY VERBALE ASC
+</select>
+
+<select id="getPdfCertificatoExport" resultType="it.aizoon.ersaf.dto.stampe.FitosanitarioExportDTO">
+  <![CDATA[
+    SELECT upper(CTR.denom_mittente || '<BR>' || CTR.indirizzo_mittente || '<BR>' || CDC.denom_comune) as nomeIndirizzoEsportatore,
+      upper(CTR.denom_destinatario) || '<BR>' || upper(CTR.indirizzo_destinatario || '<BR>' || CTR.denom_comune_est_destinatario || '<BR>' || CDN2.denom_nazione_cert) as nomeIndirizzoDestinatario,
+      upper(CDR.denom_regione) as nomeServizioFitosanita,
+      upper(CDN3.denom_nazione_cert) as nomeServizioProtVeg,
+      upper(CRMR2.desc_nazione_origine) as nomeLuogoOrigine,
+      upper(CDMT.desc_modo_trasporto_exp || 
+        CASE WHEN CTR.identif_mezzo_trasporto IS NOT NULL 
+          THEN  '<BR>' || CTR.identif_mezzo_trasporto 
+          ELSE '' END) as nomeMezzoTrasporto,
+      upper(COALESCE(CTR.punto_entrata_dichiarato, CDN2.denom_nazione_cert)) as nomePuntoEntrata,
+      CRMR2.nomeMarchiColliProdottoVegetali,
+      upper(CRMR2.datiQuantitaDichiarata) as datiQuantitaDichiarata,
+      upper(coalesce(CTC.dichiarazione_supplementare, lpad('', 90, '*'))) AS infoDichiarazioneSupplementare,
+      upper(coalesce(trattamento.desc_trattamento, lpad('', 55, '*'))) as nomeTrattamento,
+      upper(coalesce(CRTR.prodotto_chimico, lpad('', 35, '*'))) as nomeProdChimico,
+      upper(CASE WHEN CRTR.durata IS NULL OR CRTR.temperatura IS NULL
+        THEN lpad('', 35, '*')
+        ELSE CRTR.durata || '/' || CRTR.temperatura END) as durataTemp,
+      upper(coalesce(CRTR.concentrazione, lpad('', 35, '*'))) as datiConcentrazione,
+      CRTR.data_trattamento as dataTrattamento,
+      upper(coalesce(CRTR.informazioni_supplementari, lpad('', 55, '*'))) as infoSupplemTrattamento,
+      upper(CASE 
+       WHEN CTC.id_ufficio_doganale_esecuzione IS NULL 
+         THEN comune_esecuzione.denom_comune || ' (' || provincia_esecuzione.sigla_provincia || ')'
+         ELSE CDUD2.denom_ufficio_doganale || COALESCE(' (' || CDP2.sigla_provincia || ')', '') END) as nomeLuogoRilascio,
+      CTC.data_esecuzione as dataRilascio,    
+      upper(LPAD(CTC.numero_certificato_manuale, 7, '0')) as codiceCertificato,
+      upper(SUBSTRING(ispettore_firmatario.numero_tessera FROM 1 FOR 3) || ' - ' || 
+        utente_ispettore_firmatario.nome || ' ' || utente_ispettore_firmatario.cognome) AS ispettoreFirmatario
+    FROM car_t_richiesta CTR LEFT OUTER JOIN car_d_comune CDC ON CTR.id_comune_ita = CDC.id_comune
+      LEFT OUTER JOIN car_d_nazione CDN2 ON CTR.id_nazione_destinatario = CDN2.id_nazione
+      LEFT OUTER JOIN car_d_ufficio_doganale CDUD on CTR.id_ufficio_doganale_entrata = CDUD.id_ufficio_doganale
+      LEFT OUTER JOIN car_d_provincia CDP on CDUD.id_provincia = CDP.id_provincia
+      LEFT OUTER JOIN car_d_regione CDR on CDP.id_regione = CDR.id_regione
+      LEFT OUTER JOIN car_d_nazione CDN3 on CTR.id_nazione_prot_veg_destinat = CDN3.id_nazione
+      LEFT OUTER JOIN ( 
+        SELECT id_richiesta, 
+          string_agg(DISTINCT denom_nazione_cert, ' / ') AS desc_nazione_origine,
+          string_agg(
+            CASE 
+              WHEN UPPER(cod_unita_misura) = 'NMB' AND numero_pezzi IS NOT NULL THEN numero_pezzi::text 
+              ELSE replace(to_char(quantita, 'FM9999999999990.990'), '.', ',') END 
+            || ' ' || cod_unita_misura, '<BR>') AS datiQuantitaDichiarata,
+          string_agg(/*CASE WHEN LENGTH(collo) > 95 THEN SUBSTRING(collo FROM 1 FOR 95) ELSE collo END*/collo  
+              , '<BR>') AS nomeMarchiColliProdottoVegetali
+        FROM (
+          SELECT car_t_richiesta.id_richiesta, 
+              upper(CASE 
+                WHEN car_r_merce_richiesta.id_prodotto IN (56, 57, 58) 
+                THEN COALESCE(car_r_merce_richiesta.numero_colli || '/', '') 
+                ELSE COALESCE(car_r_merce_richiesta.numero_pezzi || '/', 
+                  car_r_merce_richiesta.numero_colli || '/', '') END) ||  
+              CASE WHEN car_d_prodotto.id_prodotto = 58 THEN '' 
+                ELSE upper(trim(regexp_replace(car_d_prodotto.denom_prodotto, '\(.+\)', '', 'ig'))) || '/' 
+              END ||
+              upper(CASE WHEN car_r_merce_richiesta.marchio IS NULL 
+                THEN '' ELSE car_r_merce_richiesta.marchio || '/' END) || 
+              '<I>' ||
+              CASE 
+                WHEN genere.id_genere IS NULL THEN COALESCE(specie.denom_specie, '')
+                WHEN specie.id_specie IS NOT NULL AND position(upper(genere.denom_genere) in upper(specie.denom_specie)) = 0 
+                  THEN genere.denom_genere || ' - ' || lower(specie.denom_specie) 
+                WHEN specie.id_specie IS NOT NULL THEN specie.denom_specie
+                ELSE genere.denom_genere END || '</I>' as collo, 
+            quantita,
+            car_r_merce_richiesta.numero_pezzi,
+            cod_unita_misura,
+            nazione_origine.denom_nazione_cert
+          FROM car_t_richiesta 
+            LEFT OUTER JOIN car_r_merce_richiesta 
+              ON car_t_richiesta.id_richiesta = car_r_merce_richiesta.id_richiesta
+            LEFT OUTER JOIN car_d_natura_collo 
+              ON car_r_merce_richiesta.id_natura_collo = car_d_natura_collo.id_natura_collo
+            LEFT OUTER JOIN car_d_prodotto 
+              ON car_r_merce_richiesta.id_prodotto = car_d_prodotto.id_prodotto
+            LEFT OUTER JOIN car_d_nazione 
+              ON car_r_merce_richiesta.id_nazione_origine = car_d_nazione.id_nazione
+            LEFT OUTER JOIN car_d_tipo_prodotto 
+              ON car_d_prodotto.id_tipo_prodotto = car_d_tipo_prodotto.id_tipo_prodotto
+            LEFT OUTER JOIN car_d_unita_misura 
+              ON car_d_tipo_prodotto.id_unita_misura = car_d_unita_misura.id_unita_misura
+            LEFT OUTER JOIN (
+              SELECT lingua_genere.id_genere, 
+                lingua_genere.denom_genere
+              FROM car_r_lingua_genere lingua_genere
+                INNER JOIN car_d_lingua lingua
+                  ON lingua_genere.id_lingua = lingua.id_lingua
+              WHERE UPPER(lingua.cod_lingua) = 'LA'
+            ) AS genere
+              ON car_r_merce_richiesta.id_genere = genere.id_genere
+            LEFT OUTER JOIN (
+              SELECT lingua_specie.id_specie, 
+                lingua_specie.denom_specie
+              FROM car_r_lingua_specie lingua_specie
+                INNER JOIN car_d_lingua lingua
+                  ON lingua_specie.id_lingua = lingua.id_lingua
+              WHERE UPPER(lingua.cod_lingua) = 'LA'
+            ) AS specie
+              ON car_r_merce_richiesta.id_specie = specie.id_specie
+            LEFT OUTER JOIN car_d_nazione as nazione_origine 
+              ON car_r_merce_richiesta.id_nazione_origine = nazione_origine.id_nazione
+        ) AS merci
+        GROUP BY id_richiesta
+      ) as CRMR2 on CRMR2.id_richiesta = CTR.id_richiesta
+      LEFT OUTER JOIN car_d_modo_trasporto CDMT on CTR.id_modo_trasporto = CDMT.id_modo_trasporto
+      LEFT OUTER JOIN car_t_certificato CTC on CTR.id_richiesta = CTC.id_richiesta
+      LEFT OUTER JOIN car_r_trattamento_richiesta CRTR on CTR.id_richiesta = CRTR.id_richiesta
+      LEFT OUTER JOIN car_d_trattamento AS trattamento on CRTR.id_trattamento = trattamento.id_trattamento
+      LEFT OUTER JOIN car_d_ufficio_doganale CDUD2 on CTC.id_ufficio_doganale_esecuzione = CDUD2.id_ufficio_doganale
+      LEFT OUTER JOIN car_d_provincia CDP2 on CDUD2.id_provincia = CDP2.id_provincia
+      LEFT OUTER JOIN car_d_comune AS comune_esecuzione 
+        ON CTC.id_comune_esecuzione = comune_esecuzione.id_comune
+      LEFT JOIN car_d_provincia AS provincia_esecuzione 
+        ON comune_esecuzione.id_provincia = provincia_esecuzione.id_provincia
+      LEFT OUTER JOIN car_r_ispet_certif_contr AS certificato_ispettore 
+        ON CTC.id_certificato = certificato_ispettore.id_certificato
+        AND certificato_ispettore.id_tipo_controllo = 1
+      LEFT OUTER JOIN car_t_ispettore AS ispettore_firmatario
+        ON certificato_ispettore.id_ispettore = ispettore_firmatario.id_ispettore
+      LEFT OUTER JOIN car_t_utente AS utente_ispettore_firmatario
+        ON ispettore_firmatario.id_utente = utente_ispettore_firmatario.id_utente
+      LEFT OUTER JOIN car_d_comune AS comune_ispet_firm
+        ON ispettore_firmatario.id_comune_ufficio = comune_ispet_firm.id_comune
+      LEFT OUTER JOIN car_d_provincia AS provincia_ispet_firm
+        ON comune_ispet_firm.id_provincia = provincia_ispet_firm.id_provincia
+      LEFT OUTER JOIN car_d_regione AS regione_ispet_firm
+        ON provincia_ispet_firm.id_regione = regione_ispet_firm.id_regione
+    WHERE CTR.id_richiesta = #{idRichiesta}]]>
+</select>
+
+<select id="getPdfCertificatoRiexport" resultType="it.aizoon.ersaf.dto.stampe.FitosanitarioRiexportDTO">
+  <![CDATA[
+    SELECT upper(CTR.denom_mittente || '<BR>' || CTR.indirizzo_mittente || '<BR>' || CDC.denom_comune) as nomeIndirizzoEsportatore,
+      upper(CTR.denom_destinatario || '<BR>' || CTR.indirizzo_destinatario || '<BR>' || CTR.denom_comune_est_destinatario || '<BR>' || CDN2.denom_nazione_cert) as nomeIndirizzoDestinatario,
+      upper(CDR.denom_regione) as nomeServizioFitosanita,
+      upper(CDN3.denom_nazione_cert) as nomeServizioProtVeg,
+      upper(CRMR2.desc_nazione_origine) as nomeLuogoOrigine,
+      upper(CDMT.desc_modo_trasporto_exp || 
+        CASE WHEN CTR.identif_mezzo_trasporto IS NOT NULL 
+          THEN  '<BR>' || CTR.identif_mezzo_trasporto 
+          ELSE '' END) as nomeMezzoTrasporto,
+      upper(COALESCE(CTR.punto_entrata_dichiarato, CDN2.denom_nazione_cert)) as nomePuntoEntrata,
+      CRMR2.nomeMarchiColliProdottoVegetali,
+      upper(CRMR2.datiQuantitaDichiarata) as datiQuantitaDichiarata,
+      upper(coalesce(CTC.dichiarazione_supplementare, lpad('', 90, '*'))) AS infoDichiarazioneSupplementare,
+      upper(coalesce(trattamento.desc_trattamento, lpad('', 35, '*'))) as nomeTrattamento,
+      upper(coalesce(CRTR.prodotto_chimico, lpad('', 35, '*'))) as nomeProdChimico,
+      upper(CASE WHEN CRTR.durata IS NULL OR CRTR.temperatura IS NULL
+        THEN lpad('', 35, '*')
+        ELSE CRTR.durata || '/' || CRTR.temperatura END) as durataTemp,
+      upper(coalesce(CRTR.concentrazione, lpad('', 35, '*'))) as datiConcentrazione,
+      CRTR.data_trattamento as dataTrattamento,
+      upper(coalesce(CRTR.informazioni_supplementari, lpad('', 35, '*'))) as infoSupplemTrattamento,
+      upper(CASE 
+       WHEN CTC.id_ufficio_doganale_esecuzione IS NULL 
+         THEN comune_esecuzione.denom_comune || ' (' || provincia_esecuzione.sigla_provincia || ')'
+         ELSE CDUD2.denom_ufficio_doganale || COALESCE(' (' || CDP2.sigla_provincia || ')', '') END) as nomeLuogoRilascio,
+      CTC.data_esecuzione as dataRilascio,
+      upper(CTR.numero_certificato_originale) AS codiceCertificatoOriginale,
+      upper(LPAD(CTC.numero_certificato_manuale, 7, '0')) as codiceCertificato,
+      upper(SUBSTRING(ispettore_firmatario.numero_tessera FROM 1 FOR 3) || ' - ' || 
+        utente_ispettore_firmatario.nome || ' ' || utente_ispettore_firmatario.cognome) AS ispettoreFirmatario,
+      upper(CRMR2.provenienza) as provenienza,
+      CASE WHEN CTC.copia_conforme = FALSE THEN 'x' ELSE ' ' END AS conformeCertifOrig,
+      CASE WHEN CTC.copia_conforme = TRUE THEN 'x' ELSE ' ' END AS copiaConforme,
+      CASE WHEN CTC.id_tipo_imballaggio = 1 THEN 'x' ELSE ' ' END AS imballati,
+      CASE WHEN CTC.id_tipo_imballaggio = 2 THEN 'x' ELSE ' ' END AS reimballati,
+      CASE WHEN CTC.id_tipo_imballaggio = 3 THEN 'x' ELSE ' ' END AS imballaggioOrigine,
+      CASE WHEN CTC.id_tipo_imballaggio = 4 THEN 'x' ELSE ' ' END AS imballaggioNuovo,
+      CASE WHEN CTC.conforme_certif_orig THEN 'x' ELSE ' ' END AS conformeCertifOrig,
+      CASE WHEN CTC.ispezione_supplementare THEN 'x' ELSE ' ' END AS ispezioneSupplementare
+    FROM car_t_richiesta CTR LEFT OUTER JOIN car_d_comune CDC ON CTR.id_comune_ita = CDC.id_comune
+	    LEFT OUTER JOIN car_d_nazione CDN2 ON CTR.id_nazione_destinatario = CDN2.id_nazione
+			LEFT OUTER JOIN car_d_ufficio_doganale CDUD on CTR.id_ufficio_doganale_entrata = CDUD.id_ufficio_doganale
+			LEFT OUTER JOIN car_d_provincia CDP on CDUD.id_provincia = CDP.id_provincia
+			LEFT OUTER JOIN car_d_regione CDR on CDP.id_regione = CDR.id_regione
+			LEFT OUTER JOIN car_d_nazione CDN3 on CTR.id_nazione_prot_veg_destinat = CDN3.id_nazione
+			LEFT OUTER JOIN ( 
+        SELECT id_richiesta, 
+          mode() WITHIN GROUP (ORDER BY denom_nazione_cert) AS provenienza,
+          string_agg(DISTINCT denom_nazione_cert, ' / ') AS desc_nazione_origine,
+          string_agg(
+            CASE 
+              WHEN UPPER(cod_unita_misura) = 'NMB' AND numero_pezzi IS NOT NULL THEN numero_pezzi::text 
+              ELSE replace(to_char(quantita, 'FM9999999999990.990'), '.', ',') END 
+            || ' ' || cod_unita_misura, '<BR>') AS datiQuantitaDichiarata,
+          string_agg(/*CASE WHEN LENGTH(collo) > 95 THEN SUBSTRING(collo FROM 1 FOR 95) ELSE collo END*/collo  
+            , '<BR>') AS nomeMarchiColliProdottoVegetali
+        FROM (
+          SELECT car_t_richiesta.id_richiesta, 
+            upper(CASE 
+                WHEN car_r_merce_richiesta.id_prodotto IN (56, 57, 58)
+                THEN COALESCE(car_r_merce_richiesta.numero_colli || '/', '') 
+                ELSE COALESCE(car_r_merce_richiesta.numero_pezzi || '/', 
+                  car_r_merce_richiesta.numero_colli || '/', '') END) ||
+            CASE WHEN car_d_prodotto.id_prodotto = 58 THEN '' 
+              ELSE upper(trim(regexp_replace(car_d_prodotto.denom_prodotto, '\(.+\)', '', 'ig'))) || '/' 
+            END ||
+            upper(CASE WHEN car_r_merce_richiesta.marchio IS NULL 
+                THEN '' ELSE car_r_merce_richiesta.marchio || '/' END) || 
+            '<I>' ||
+            CASE 
+              WHEN genere.id_genere IS NULL THEN COALESCE(specie.denom_specie, '')
+              WHEN specie.id_specie IS NOT NULL AND position(upper(genere.denom_genere) in upper(specie.denom_specie)) = 0 
+                THEN genere.denom_genere || ' - ' || lower(specie.denom_specie) 
+              WHEN specie.id_specie IS NOT NULL THEN specie.denom_specie
+              ELSE genere.denom_genere END || '</I>' as collo, 
+            quantita,
+            car_r_merce_richiesta.numero_pezzi,
+            cod_unita_misura,
+            nazione_origine.denom_nazione_cert
+          FROM car_t_richiesta 
+            LEFT OUTER JOIN car_r_merce_richiesta 
+              ON car_t_richiesta.id_richiesta = car_r_merce_richiesta.id_richiesta
+            LEFT OUTER JOIN car_d_natura_collo 
+              ON car_r_merce_richiesta.id_natura_collo = car_d_natura_collo.id_natura_collo
+            LEFT OUTER JOIN car_d_prodotto 
+              ON car_r_merce_richiesta.id_prodotto = car_d_prodotto.id_prodotto
+            LEFT OUTER JOIN car_d_nazione 
+              ON car_r_merce_richiesta.id_nazione_origine = car_d_nazione.id_nazione
+            LEFT OUTER JOIN car_d_tipo_prodotto 
+              ON car_d_prodotto.id_tipo_prodotto = car_d_tipo_prodotto.id_tipo_prodotto
+            LEFT OUTER JOIN car_d_unita_misura 
+              ON car_d_tipo_prodotto.id_unita_misura = car_d_unita_misura.id_unita_misura
+            LEFT OUTER JOIN (
+              SELECT lingua_genere.id_genere, 
+                lingua_genere.denom_genere
+              FROM car_r_lingua_genere lingua_genere
+                INNER JOIN car_d_lingua lingua
+                  ON lingua_genere.id_lingua = lingua.id_lingua
+              WHERE UPPER(lingua.cod_lingua) = 'LA'
+            ) AS genere
+              ON car_r_merce_richiesta.id_genere = genere.id_genere
+            LEFT OUTER JOIN (
+              SELECT lingua_specie.id_specie, 
+                lingua_specie.denom_specie
+              FROM car_r_lingua_specie lingua_specie
+                INNER JOIN car_d_lingua lingua
+                  ON lingua_specie.id_lingua = lingua.id_lingua
+              WHERE UPPER(lingua.cod_lingua) = 'LA'
+            ) AS specie
+              ON car_r_merce_richiesta.id_specie = specie.id_specie
+            LEFT OUTER JOIN car_d_nazione as nazione_origine 
+              ON car_r_merce_richiesta.id_nazione_origine = nazione_origine.id_nazione
+        ) AS merci
+        GROUP BY id_richiesta
+      ) as CRMR2 on CRMR2.id_richiesta = CTR.id_richiesta
+      LEFT OUTER JOIN car_d_modo_trasporto CDMT on CTR.id_modo_trasporto = CDMT.id_modo_trasporto
+			LEFT OUTER JOIN car_t_certificato CTC on CTR.id_richiesta = CTC.id_richiesta
+			LEFT OUTER JOIN car_r_trattamento_richiesta CRTR on CTR.id_richiesta = CRTR.id_richiesta
+			LEFT OUTER JOIN car_d_trattamento AS trattamento on CRTR.id_trattamento = trattamento.id_trattamento
+			LEFT OUTER JOIN car_d_ufficio_doganale CDUD2 on CTC.id_ufficio_doganale_esecuzione = CDUD2.id_ufficio_doganale
+			LEFT OUTER JOIN car_d_provincia CDP2 on CDUD2.id_provincia = CDP2.id_provincia
+			LEFT OUTER JOIN car_d_comune AS comune_esecuzione 
+        ON CTC.id_comune_esecuzione = comune_esecuzione.id_comune
+			LEFT JOIN car_d_provincia AS provincia_esecuzione 
+        ON comune_esecuzione.id_provincia = provincia_esecuzione.id_provincia
+			LEFT OUTER JOIN car_r_ispet_certif_contr AS certificato_ispettore 
+        ON CTC.id_certificato = certificato_ispettore.id_certificato
+        AND certificato_ispettore.id_tipo_controllo = 1
+			LEFT OUTER JOIN car_t_ispettore AS ispettore_firmatario
+        ON certificato_ispettore.id_ispettore = ispettore_firmatario.id_ispettore
+			LEFT OUTER JOIN car_t_utente AS utente_ispettore_firmatario
+        ON ispettore_firmatario.id_utente = utente_ispettore_firmatario.id_utente
+			LEFT OUTER JOIN car_d_comune AS comune_ispet_firm
+        ON ispettore_firmatario.id_comune_ufficio = comune_ispet_firm.id_comune
+			LEFT OUTER JOIN car_d_provincia AS provincia_ispet_firm
+        ON comune_ispet_firm.id_provincia = provincia_ispet_firm.id_provincia
+			LEFT OUTER JOIN car_d_regione AS regione_ispet_firm
+        ON provincia_ispet_firm.id_regione = regione_ispet_firm.id_regione
+	 WHERE CTR.id_richiesta = #{idRichiesta}]]>
+</select>
+
+</mapper>

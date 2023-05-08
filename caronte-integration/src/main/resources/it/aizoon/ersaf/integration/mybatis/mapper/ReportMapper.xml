@@ -1,0 +1,874 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.ReportMapper">
+
+  <select id="getElencoReportVivai" parameterType="it.aizoon.ersaf.form.RicercaReportVivaiForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+     SELECT comunicazione.id_comunicazione,      
+       comunicazione.id_stato_comunicazione, 
+       stato.desc_stato desc_stato_comunicazione,
+       tipoComunicazione.desc_breve descTipoComunicazione,            
+       UPPER(spedizioniere.denom_spedizioniere) as ragioneSociale,   
+       coalesce(spedizioniere.codice_fiscale, spedizioniere.cuaa) codice_fiscale,
+       spedizioniere.partita_iva, 
+       spedizioniere.codice_ruop, 
+       centro_aziendale.cod_centro_aziendale,          
+       lingua_genere.denom_genere,          
+       lingua_specie.denom_specie,  
+       comunicazioneSpecie.numero_piante,  
+       comunicazione.data_inserimento as dataCreazione,
+       comunicazione.data_aggiornamento as dataInoltro,
+       cdzp.id_org_nocivo,
+       cdon.desc_estesa denomOrgNocivo       
+     FROM car_t_comunicazione comunicazione
+		  INNER JOIN car_d_tipo_comunicazione tipoComunicazione 
+		    ON comunicazione.id_tipo_comunicazione = tipoComunicazione.id_tipo_comunicazione
+		  INNER JOIN car_d_stato_comunicazione stato 
+		    ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+		  INNER JOIN car_t_centro_aziendale centro_aziendale 
+		    ON comunicazione.id_centro_aziendale = centro_aziendale.id_centro_aziendale
+		  INNER JOIN car_t_spedizioniere spedizioniere 
+		    ON centro_aziendale.id_spedizioniere = spedizioniere.id_spedizioniere
+		  INNER JOIN car_r_comunicazione_specie comunicazioneSpecie
+		    on comunicazione.id_comunicazione = comunicazioneSpecie.id_comunicazione
+		  INNER join car_d_specie specie
+		    on comunicazioneSpecie.id_specie  = specie.id_specie		 	     
+	      INNER JOIN car_r_lingua_specie lingua_specie
+	        ON specie.id_specie = lingua_specie.id_specie
+	      INNER JOIN car_d_lingua lingua
+	        ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = 'LA'  
+	      INNER JOIN car_d_genere genere
+	        on genere.id_genere = specie.id_genere
+	      INNER JOIN car_r_lingua_genere lingua_genere
+			ON genere.id_genere = lingua_genere.id_genere
+		  LEFT JOIN car_d_zona_protetta cdzp 
+		  	ON cdzp.id_genere = comunicazioneSpecie.id_genere OR cdzp.id_specie = comunicazioneSpecie.id_specie
+		  LEFT JOIN car_d_org_nocivo cdon 
+		    ON cdon.id_org_nocivo = cdzp.id_org_nocivo 
+	<where>		             
+		<if test="idSpecieList != null">				
+		comunicazioneSpecie.id_specie in	  
+		<foreach item = "item" index = "index" collection = "idSpecieList"
+		     open = "(" separator = "," close = ")">
+		     #{item}
+		   </foreach>    
+		</if> 
+		<if test="genere != null and idSpecieList == null ">
+			lingua_genere.denom_genere = #{genere} 
+		</if> 	             
+		<if test="dataCreazioneInizio != null">				
+		 AND comunicazione.data_inserimento >= #{dataCreazioneInizio} 
+		</if>  	
+		<if test="dataCreazioneFine != null">				
+		    AND #{dataCreazioneFine} > comunicazione.data_inserimento  
+		</if>   
+		<if test="idOrgNocivo != null">				
+		    AND cdzp.id_org_nocivo = #{idOrgNocivo}
+		</if> 
+	</where>
+		ORDER BY spedizioniere.id_spedizioniere, centro_aziendale.id_centro_aziendale, comunicazione.id_tipo_comunicazione, lingua_genere.denom_genere, lingua_specie.id_specie
+  </select>
+  
+  <select id="getElencoReportVivaiNoOn" parameterType="it.aizoon.ersaf.form.RicercaReportVivaiForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+     SELECT comunicazione.id_comunicazione,      
+       comunicazione.id_stato_comunicazione, 
+       stato.desc_stato desc_stato_comunicazione,
+       tipoComunicazione.desc_breve descTipoComunicazione,            
+       UPPER(spedizioniere.denom_spedizioniere) as ragioneSociale,   
+       coalesce(spedizioniere.codice_fiscale, spedizioniere.cuaa) codice_fiscale,
+       spedizioniere.partita_iva, 
+       spedizioniere.codice_ruop, 
+       centro_aziendale.cod_centro_aziendale,          
+       lingua_genere.denom_genere,          
+       lingua_specie.denom_specie,  
+       comunicazioneSpecie.numero_piante,  
+       comunicazione.data_inserimento as dataCreazione,
+       comunicazione.data_aggiornamento as dataInoltro
+     FROM car_t_comunicazione comunicazione
+		  INNER JOIN car_d_tipo_comunicazione tipoComunicazione 
+		    ON comunicazione.id_tipo_comunicazione = tipoComunicazione.id_tipo_comunicazione
+		  INNER JOIN car_d_stato_comunicazione stato 
+		    ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+		  INNER JOIN car_t_centro_aziendale centro_aziendale 
+		    ON comunicazione.id_centro_aziendale = centro_aziendale.id_centro_aziendale
+		  INNER JOIN car_t_spedizioniere spedizioniere 
+		    ON centro_aziendale.id_spedizioniere = spedizioniere.id_spedizioniere
+		  INNER JOIN car_r_comunicazione_specie comunicazioneSpecie
+		    on comunicazione.id_comunicazione = comunicazioneSpecie.id_comunicazione
+		  INNER join car_d_specie specie
+		    on comunicazioneSpecie.id_specie  = specie.id_specie		 	     
+	      INNER JOIN car_r_lingua_specie lingua_specie
+	        ON specie.id_specie = lingua_specie.id_specie
+	      INNER JOIN car_d_lingua lingua
+	        ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = 'LA'  
+	      INNER JOIN car_d_genere genere
+	        on genere.id_genere = specie.id_genere
+	      INNER JOIN car_r_lingua_genere lingua_genere
+			ON genere.id_genere = lingua_genere.id_genere
+		  LEFT JOIN car_d_zona_protetta cdzp 
+		  	ON cdzp.id_genere = comunicazioneSpecie.id_genere OR cdzp.id_specie = comunicazioneSpecie.id_specie
+		  LEFT JOIN car_d_org_nocivo cdon 
+		    ON cdon.id_org_nocivo = cdzp.id_org_nocivo 
+	<where>		             
+		<if test="idSpecieList != null">				
+		comunicazioneSpecie.id_specie in	  
+		<foreach item = "item" index = "index" collection = "idSpecieList"
+		     open = "(" separator = "," close = ")">
+		     #{item}
+		   </foreach>    
+		</if> 
+		<if test="genere != null and idSpecieList == null ">
+			lingua_genere.denom_genere = #{genere} 
+		</if> 	             
+		<if test="dataCreazioneInizio != null">				
+		 AND comunicazione.data_inserimento >= #{dataCreazioneInizio} 
+		</if>  	
+		<if test="dataCreazioneFine != null">				
+		    AND #{dataCreazioneFine} > comunicazione.data_inserimento  
+		</if>   
+		<if test="idOrgNocivo != null">				
+		    AND cdzp.id_org_nocivo = #{idOrgNocivo}
+		</if> 
+	</where>
+		group by
+			spedizioniere.id_spedizioniere,
+			centro_aziendale.id_centro_aziendale,
+			lingua_specie.id_specie,
+			comunicazione.id_comunicazione,      
+	       comunicazione.id_stato_comunicazione, 
+	       stato.desc_stato,
+	       tipoComunicazione.desc_breve,            
+	       UPPER(spedizioniere.denom_spedizioniere),   
+	       spedizioniere.codice_fiscale, 
+	       spedizioniere.partita_iva, 
+	       spedizioniere.codice_ruop, 
+	       centro_aziendale.cod_centro_aziendale,          
+	       lingua_genere.denom_genere,          
+	       lingua_specie.denom_specie,  
+	       comunicazioneSpecie.numero_piante,  
+	       comunicazione.data_inserimento,
+	       comunicazione.data_aggiornamento
+		ORDER BY spedizioniere.id_spedizioniere, centro_aziendale.id_centro_aziendale, comunicazione.id_tipo_comunicazione, lingua_genere.denom_genere, lingua_specie.id_specie
+  </select>
+
+	<select id="getElencoReport" parameterType="it.aizoon.ersaf.form.RicercaReportForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+		SELECT TR.ID_RICHIESTA,
+		       TS.DENOM_SPEDIZIONIERE,
+		       TR.ID_STATO_RICHIESTA,
+		       DSR.DESC_STATO_RICHIESTA,
+		       TR.DATA_ESECUZIONE,
+		       TR.IDENTIF_MEZZO_TRASPORTO,
+		       (CASE WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'I' THEN cdcost.valore_costante ||COALESCE(TC.numero_certificato::TEXT,TC.numero_certificato_manuale::TEXT) 
+		             WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'E' THEN cdcost.valore_costante ||TC.numero_certificato_manuale::TEXT 
+		             WHEN SUBSTRING(cdtr.cod_tipo_richiesta,1,1) = 'R' THEN cdcost.valore_costante ||TC.numero_certificato_manuale::TEXT END) AS NUMERO_CERTIFICATO,
+		       TR.DENOM_MITTENTE,
+		       TR.DENOM_DESTINATARIO,
+		       COALESCE((
+		        SELECT SUM(RMT.IMPORTO)
+            FROM CAR_R_MERCE_RICHIESTA RMR
+              INNER JOIN CAR_R_MERCE_TARIFFA RMT 
+                ON RMT.ID_MERCE_RICHIESTA = RMR.ID_MERCE_RICHIESTA
+            WHERE RMR.ID_RICHIESTA = TR.ID_RICHIESTA), 0) + 
+           COALESCE((
+            SELECT SUM(IMPORTO)
+            FROM CAR_R_RICHIESTA_TARIFFA
+            WHERE ID_RICHIESTA = TR.ID_RICHIESTA), 0) AS TARIFFA
+		FROM CAR_T_RICHIESTA TR
+		  LEFT JOIN CAR_T_UTENTE TU ON TU.id_utente = TR.ID_UTENTE_INSERT
+		  LEFT JOIN CAR_T_SPEDIZIONIERE TS ON TS.ID_SPEDIZIONIERE = TU.ID_SPEDIZIONIERE
+		  LEFT JOIN CAR_T_CERTIFICATO TC ON TR.ID_RICHIESTA = TC.ID_RICHIESTA
+		  LEFT JOIN CAR_D_STATO_RICHIESTA DSR ON DSR.ID_STATO_RICHIESTA = TR.ID_STATO_RICHIESTA
+		  JOIN car_d_tipo_richiesta cdtr ON cdtr.id_tipo_richiesta = TR.id_tipo_richiesta
+		  LEFT JOIN car_d_costante cdcost ON cdcost.id_costante = 2
+		<where>	
+			<if test="codTipoRichiesta != null">
+				AND CASE WHEN UPPER(CDTR.COD_TIPO_RICHIESTA) = 'RI' 
+				  THEN 'EX' ELSE UPPER(CDTR.COD_TIPO_RICHIESTA) END = UPPER(#{codTipoRichiesta})
+			</if>
+			<if test="idStatoRichiesta != null">
+				AND DSR.ID_STATO_RICHIESTA = #{idStatoRichiesta}
+			</if>
+      		<if test="mese != null">
+				AND EXTRACT(MONTH FROM TR.DATA_ESECUZIONE) = #{mese}
+			</if>
+			<if test="anno != null">
+				AND EXTRACT(YEAR FROM TR.DATA_ESECUZIONE) = #{anno}
+			</if>
+			<if test="idSpedizioniere != null">
+		        AND TS.ID_SPEDIZIONIERE = #{idSpedizioniere}
+		    </if>				     
+		</where>
+	</select>
+	
+	<update id="updateDatiIspezioneVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set 
+      ora_inizio_ispezione = #{oraInizioIspezione,jdbcType=TIME},
+      ora_fine_ispezione = #{oraFineIspezione,jdbcType=TIME},
+      magazzino_doganale = #{magazzinoDoganale,jdbcType=VARCHAR},
+      delegato_presente_ispezione = #{delegatoPresenteIspezione,jdbcType=VARCHAR},
+      delegato_presente_ruolo = #{delegatoPresenteRuolo,jdbcType=VARCHAR},
+      data_ispezione = #{dataIspezione,jdbcType=TIMESTAMP},
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDatiSpedizioneVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set    
+			flg_piante_vive = #{flgPianteVive,jdbcType=BOOLEAN}, 
+			flg_parti_piante_vive = #{flgPartiPianteVive,jdbcType=BOOLEAN}, 
+			flg_sementi = #{flgSementi,jdbcType=BOOLEAN}, 
+			flg_semi = #{flgSemi,jdbcType=BOOLEAN}, 
+			flg_terra_terriccio = #{flgTerraTerriccio,jdbcType=BOOLEAN}, 
+			flg_corteccia = #{flgCorteccia,jdbcType=BOOLEAN}, 
+			flg_legname = #{flgLegname,jdbcType=BOOLEAN}, 
+			flg_frutti = #{flgFrutti,jdbcType=BOOLEAN}, 
+			flg_fiori_recisi = #{flgFioriRecisi,jdbcType=BOOLEAN}, 
+			flg_imbal_legno = #{flgImbalLegno,jdbcType=BOOLEAN}, 
+			flg_altro = #{flgAltro,jdbcType=BOOLEAN}, 
+			altra_tipologia_prodotto = #{altraTipologiaProdotto,jdbcType=VARCHAR},
+			altra_documentazione_allegata = #{altraDocumentazioneAllegata,jdbcType=VARCHAR},
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+	
+	 <update id="updateDatiControlloEsitoVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set 
+      ditta_assiste_analisi_lab = #{dittaAssisteAnalisiLab,jdbcType=BOOLEAN},
+      allegato_consulto = #{allegatoConsulto,jdbcType=BOOLEAN},
+      nullaosta_rilasciato = #{nullaostaRilasciato,jdbcType=BOOLEAN},
+      consulto_respons_filosanit = #{consultoResponsFilosanit,jdbcType=BOOLEAN},            
+      motivo_non_rilascio_nullaosta = #{motivoNonRilascioNullaosta,jdbcType=VARCHAR},      
+      disposta_misura_uffic = #{dispostaMisuraUffic,jdbcType=BOOLEAN},
+      motivo_disposta_misura_uffic = #{motivoDispostaMisuraUffic,jdbcType=VARCHAR},
+      prelievo_per_ricerca = #{prelievoPerRicerca,jdbcType=VARCHAR},
+      codice_campione = #{codiceCampione,jdbcType=VARCHAR},
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDatiMisureUfficialiVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set 
+      spedizione_rifiutata = #{spedizioneRifiutata,jdbcType=BOOLEAN},
+      trasp_esterno_comun = #{traspEsternoComun,jdbcType=BOOLEAN},
+      prodotti_infetti_rimossi = #{prodottiInfettiRimossi,jdbcType=BOOLEAN},
+      distrutto = #{distrutto,jdbcType=BOOLEAN},            
+      quarantena = #{quarantena,jdbcType=BOOLEAN},     
+      trattamento_adeguato = #{trattamentoAdeguato,jdbcType=BOOLEAN},      
+      motivo_rifiuto_spedizione = #{motivoRifiutoSpedizione,jdbcType=VARCHAR},
+      motivo_trasp_esterno_comun = #{motivoTraspEsternoComun,jdbcType=VARCHAR},  
+      motivo_rimoz_prodotti_infetti = #{motivoRimozProdottiInfetti,jdbcType=VARCHAR},  
+      motivo_distruzione = #{motivoDistruzione,jdbcType=VARCHAR},  
+      motivo_trattamento_adeguato = #{motivoTrattamentoAdeguato,jdbcType=VARCHAR},        
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDatiCustodiaVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set    
+      custode_merce_mis_uffic = #{custodeMerceMisUffic,jdbcType=VARCHAR},
+      documento_identita_custode = #{documentoIdentitaCustode,jdbcType=VARCHAR},  
+      ruolo_custode = #{ruoloCustode,jdbcType=VARCHAR},  
+      locali_custodia = #{localiCustodia,jdbcType=VARCHAR},          
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+  
+  <update id="updateDatiDichiarazioniNoteVerbale" parameterType="it.aizoon.ersaf.dto.generati.CarTVerbaleIspezione">
+    update caronte.car_t_verbale_ispezione
+    set 
+      copia_verb_consegnato_pers = #{copiaVerbConsegnatoPers,jdbcType=VARCHAR},
+      ruolo_persona = #{ruoloPersona,jdbcType=VARCHAR},  
+      dichiarazione_persona = #{dichiarazionePersona,jdbcType=VARCHAR},  
+      note = #{note,jdbcType=VARCHAR},        
+      
+      id_utente_update = #{idUtenteUpdate,jdbcType=SMALLINT},
+      data_update = #{dataUpdate,jdbcType=TIMESTAMP}
+    where id_verbale_ispezione = #{idVerbaleIspezione,jdbcType=BIGINT}
+  </update>
+  
+  <select id="getElencoReportComVivai" parameterType="it.aizoon.ersaf.form.RicercaReportVivaiForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+     SELECT comunicazione.id_comunicazione,      
+	       comunicazione.id_stato_comunicazione, 
+	       stato.desc_stato desc_stato_comunicazione,
+	       tipo.desc_breve descTipoComunicazione,            
+	       UPPER(spedizioniere.denom_spedizioniere) as ragioneSociale,   
+       	   coalesce(spedizioniere.codice_fiscale, spedizioniere.cuaa) codice_fiscale,
+	       spedizioniere.partita_iva, 
+	       spedizioniere.codice_ruop, 
+	       centro_aziendale.cod_centro_aziendale,           
+	       comunicazione.data_inserimento dataCreazione    
+     FROM car_t_comunicazione comunicazione
+          INNER JOIN car_d_tipo_comunicazione tipo 
+            ON comunicazione.id_tipo_comunicazione = tipo.id_tipo_comunicazione
+          INNER JOIN car_d_stato_comunicazione stato 
+            ON comunicazione.id_stato_comunicazione = stato.id_stato_comunicazione
+          INNER JOIN car_t_centro_aziendale centro_aziendale 
+            ON comunicazione.id_centro_aziendale = centro_aziendale.id_centro_aziendale
+          INNER JOIN car_t_spedizioniere spedizioniere 
+            ON centro_aziendale.id_spedizioniere = spedizioniere.id_spedizioniere       
+      <where> 		             
+	      <if test="dataCreazioneInizio != null">				
+		     AND comunicazione.data_inserimento >= #{dataCreazioneInizio} 
+		  </if>  	
+		  <if test="dataCreazioneFine != null">				
+		     AND #{dataCreazioneFine} > comunicazione.data_inserimento  
+		  </if>   
+	  </where>
+	  ORDER BY comunicazione.data_inserimento desc
+  </select>
+  
+<select id="getElencoReportAziendeRuopAll" parameterType="it.aizoon.ersaf.form.RicercaReportAutorizzazioniForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+       select 
+			  max(id_domanda) as idDomanda,
+			  cts.id_tipo_spedizioniere,
+			  cdts.denom_tipo_spedizioniere,
+			  cdsa.id_stato_azienda,
+			  cdsa.desc_estesa as descStatoAzienda, 
+			  UPPER(denom_spedizioniere) as ragioneSociale,
+			  cuaa, 
+			  partita_iva, 
+       		  coalesce(cts.codice_fiscale, cts.cuaa) codice_fiscale,
+			  sigla_provincia,
+			  denom_comune,			 
+			  upper(indirizzo) as indirizzo, 
+			  UPPER(tipologia_attivita) as tipologiaAttivitaAnnotazioni,
+			  (select string_agg(distinct upper(desc_estesa),'; ') 
+			     from car_r_att_materiale_utente cramu
+			  	inner join car_d_tipo_attivita cdta on cdta.id_tipo_attivita = cramu.id_tipo_attivita 
+			  	where id_domanda = ctd.id_domanda) as tipologiaAttivita,  	
+			  upper(codice_ruop) as codiceRuop, 
+			  cts.data_registrazione_ruop,
+			  cts.codice_fitok,
+			  UPPER(email) as email, 
+			  UPPER(pec) as pec,
+			  cellulare,
+			  ctd.numero_protocollo,
+			  ctd.data_protocollo 
+		 from car_t_spedizioniere cts 
+		inner join car_d_stato_azienda cdsa on cdsa.id_stato_azienda = cts.id_stato_azienda 
+		inner join car_d_tipo_spedizioniere cdts on cdts.id_tipo_spedizioniere  = cts.id_tipo_spedizioniere 
+		inner join car_d_comune cdc on cdc.id_comune = cts.id_comune 
+		inner join car_d_provincia cdp on cdp.id_provincia = cdc.id_provincia 
+		 left join car_t_domanda ctd on ctd.id_spedizioniere = cts.id_spedizioniere 
+		  								and ctd.id_stato_comunicazione in(2,3) and ctd.id_tipo_comunicazione != 4	    			
+      <where> 		   
+      	  codice_ruop is not null          
+	      <if test="dataRuopInizio != null">				
+		     AND cts.data_registrazione_ruop >= #{dataRuopInizio} 
+		  </if>  	
+		  <if test="dataRuopFine != null">				
+		     AND #{dataRuopFine} > cts.data_registrazione_ruop  
+		  </if> 
+		  <if test="idTipoSpedizioniere != null">
+				AND cts.id_tipo_spedizioniere = #{idTipoSpedizioniere}
+		  </if>  
+		  <if test="idStatoAzienda != null">
+				AND cdsa.id_stato_azienda = #{idStatoAzienda}
+		  </if> 
+		  <if test="ragioneSociale != null">
+				<bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+				AND  upper(cts.denom_spedizioniere) like UPPER(#{ragioneSociale})
+			</if> 
+		  <if test="codiceRuop != null">
+				<bind name="codiceRuop" value="'%' + codiceRuop + '%'" />
+				AND  upper(cts.codice_ruop) like UPPER(#{codiceRuop})
+		  </if>
+		  <if test="tipologiaAttivita != null">
+				<bind name="tipologiaAttivita" value="'%' + tipologiaAttivita + '%'" />
+				AND upper(cts.tipologia_attivita) like UPPER(#{tipologiaAttivita})
+				 OR upper((select string_agg(distinct upper(desc_estesa),'; ') 
+			     		    from car_r_att_materiale_utente cramu
+			  	           inner join car_d_tipo_attivita cdta on cdta.id_tipo_attivita = cramu.id_tipo_attivita 
+			  	           where id_domanda = ctd.id_domanda)) like UPPER(#{tipologiaAttivita})
+		  </if>
+		  <if test="idProvincia != null">
+				AND cdp.id_provincia = #{idProvincia}
+		  </if>
+		  <if test="idComune != null">
+				AND cdc.id_comune = #{idComune}
+		  </if>
+		  <if test="partitaIva != null">
+				<bind name="partitaIva" value="'%' + partitaIva + '%'" />
+				AND  upper(cts.partita_iva) like UPPER(#{partitaIva})
+		  </if>
+		 
+	  </where>
+	  group by cdsa.id_stato_azienda,
+				  cdsa.desc_estesa, 
+				  cts.id_tipo_spedizioniere,
+			  	  cdts.denom_tipo_spedizioniere,
+				  cuaa, 
+				  partita_iva, 
+				  codice_fiscale,
+				  denom_spedizioniere, 
+				  sigla_provincia,
+				  denom_comune, 
+				  cap,
+				  indirizzo, 
+				  codice_ruop, 
+				  tipologiaAttivitaAnnotazioni, 
+				  tipologiaAttivita,
+				  telefono, 
+				  fax, 
+				  cellulare, 
+				  email, 
+				  pec,
+				  cts.codice_fitok,
+				  cts.data_registrazione_ruop,
+				  ctd.numero_protocollo,
+			  	  ctd.data_protocollo 
+	  ORDER BY cts.data_registrazione_ruop desc
+  </select>
+  
+ 	<select id="getElencoReportAziendeConDomandaRuop" parameterType="it.aizoon.ersaf.form.RicercaReportAutorizzazioniForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+ 		select  cuaa,
+	  		  cdsa.id_stato_azienda,
+			  cdsa.desc_estesa as descStatoAzienda, 
+			  cts.id_tipo_spedizioniere,
+			  cdts.denom_tipo_spedizioniere,
+			  coalesce(cts.codice_fiscale, cts.cuaa) codice_fiscale,
+			  partita_iva, 
+			  UPPER(denom_spedizioniere) as ragioneSociale,
+			  sigla_provincia,
+			  denom_comune,
+			  upper(indirizzo) as indirizzo, 
+			  upper(codice_ruop) as codiceRuop, 
+			  UPPER(tipologia_attivita) as tipologiaAttivitaAnnotazioni,
+			  (select string_agg(distinct upper(desc_estesa),'; ') 
+			     from car_r_att_materiale_utente cramu
+			  	inner join car_d_tipo_attivita cdta on cdta.id_tipo_attivita = cramu.id_tipo_attivita 
+			  	where id_domanda = domanda.id_domanda) as tipologiaAttivita,  	
+			  telefono, 
+			  fax, 
+			  cellulare, 
+			  UPPER(email) as email, 
+			  UPPER(pec) as pec,
+			  codice_fitok,
+			  cts.data_registrazione_ruop,
+			  domanda.numero_protocollo, 
+			  domanda.data_protocollo
+	  from car_t_spedizioniere cts 
+     inner join car_d_stato_azienda cdsa on cdsa.id_stato_azienda = cts.id_stato_azienda     
+	 inner join car_d_tipo_spedizioniere cdts on cdts.id_tipo_spedizioniere  = cts.id_tipo_spedizioniere 
+     inner join car_d_comune cdc on cdc.id_comune = cts.id_comune 
+	 inner join car_d_provincia cdp on cdp.id_provincia = cdc.id_provincia 
+	 inner join (select max(id_domanda) id_domanda, 
+	 					ctd.id_spedizioniere, 
+ 						ctd.numero_protocollo, 
+			  			ctd.data_protocollo 
+				   from car_t_domanda ctd
+				  inner join car_t_spedizioniere sped on sped.id_spedizioniere = ctd.id_spedizioniere 
+				  where ctd.id_stato_comunicazione in(2,3) and ctd.id_tipo_comunicazione != 4	
+				    and codice_ruop is not null
+				  group by ctd.id_spedizioniere,
+				 			ctd.numero_protocollo, 
+			  				ctd.data_protocollo) as domanda on domanda.id_spedizioniere = cts.id_spedizioniere
+		<where>
+			<if test="dataRuopInizio != null">
+				AND cts.data_registrazione_ruop >= #{dataRuopInizio}
+			</if>
+			<if test="dataRuopFine != null">
+				AND #{dataRuopFine} > cts.data_registrazione_ruop
+			</if>
+			<if test="idTipoSpedizioniere != null">
+				AND cts.id_tipo_spedizioniere = #{idTipoSpedizioniere}
+			</if>
+			<if test="idStatoAzienda != null">
+				AND cdsa.id_stato_azienda = #{idStatoAzienda}
+			</if>
+			<if test="ragioneSociale != null">
+				<bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+				AND upper(cts.denom_spedizioniere) like UPPER(#{ragioneSociale})
+			</if>
+			<if test="codiceRuop != null">
+				<bind name="codiceRuop" value="'%' + codiceRuop + '%'" />
+				AND upper(cts.codice_ruop) like UPPER(#{codiceRuop})
+			</if>
+			<if test="tipologiaAttivita != null">
+				<bind name="tipologiaAttivita" value="'%' + tipologiaAttivita + '%'" />
+				AND upper(cts.tipologia_attivita) like UPPER(#{tipologiaAttivita})
+				OR upper((select string_agg(distinct upper(desc_estesa),'; ')
+				from car_r_att_materiale_utente cramu
+				inner join car_d_tipo_attivita cdta on cdta.id_tipo_attivita =
+				cramu.id_tipo_attivita
+				where id_domanda = domanda.id_domanda)) like UPPER(#{tipologiaAttivita})
+			</if>
+			<if test="idProvincia != null">
+				AND cdp.id_provincia = #{idProvincia}
+			</if>
+			<if test="idComune != null">
+				AND cdc.id_comune = #{idComune}
+			</if>
+			<if test="partitaIva != null">
+				<bind name="partitaIva" value="'%' + partitaIva + '%'" />
+				AND upper(cts.partita_iva) like UPPER(#{partitaIva})
+			</if>
+	  	</where>
+    </select>
+
+	<select id="getElencoReportControlli" parameterType="it.aizoon.ersaf.form.RicercaReportControlliForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+		select  
+		controllo.id_controllo, 		
+		controllofisicosp.id_controllo_fisico,
+		sped.id_spedizioniere ,
+		upper(sped.denom_spedizioniere) as ragioneSociale,
+		sped.cuaa,
+		sped.partita_iva,
+		centroAz.id_centro_aziendale ,
+		upper(centroAz.cod_centro_aziendale) as cod_centro_aziendale,
+		upper(centroAz.indirizzo) as indirizzo, 
+		prov.denom_provincia as provincia,		
+		com.denom_comune as comune,		
+		sped.tipologia_attivita,		
+		(
+			select
+				string_agg(distinct desc_estesa, '; ')
+			from
+				car_r_att_materiale_utente cramu
+			inner join car_d_tipo_attivita cdta on
+				cdta.id_tipo_attivita = cramu.id_tipo_attivita
+			inner join (
+				select
+					max(id_domanda) id_domanda
+				from
+					car_t_domanda ctd
+				where
+					ctd.id_stato_comunicazione in(2, 3)
+					and ctd.id_tipo_comunicazione != 4
+					and id_spedizioniere = sped.id_spedizioniere) as domanda on
+				domanda.id_domanda = cramu.id_domanda) as tipologiaAttivitaDom,
+		upper(sped.codice_ruop) as codice_ruop, 
+		controllo.data_controllo,
+		controllo.numero_verbale,
+		(select string_agg(ctu.cognome || ' ' || ctu.nome , ';')
+			 from car_r_controllo_ispettore crci
+			 inner join car_t_ispettore cti on crci.id_ispettore = cti.id_ispettore
+			 inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+			 where crci.id_controllo = controllo.id_controllo ) as ispettore,		
+		(
+		  select
+		    string_agg(orgNoc.desc_breve,'; ' )
+		   from
+		     car_d_org_nocivo orgNoc
+		   where
+		     orgNoc.id_org_nocivo in
+		     (
+		       select zonaPr.id_org_nocivo
+		       from car_d_zona_protetta zonaPr 
+		       where zonaPr.id_genere = controlloFisicoSp.id_genere 		       
+		     )		    
+		) as organismo_nocivo,		
+		linguaGen.denom_genere,
+		linguaSp.denom_specie,		 
+		controlloFisicoSp.num_piante as numeroPiante,
+		CASE
+    		when esito.fl_esito = 'S' then 'Favorevole'
+    		when (esito.fl_esito = 'N') then 'Non favorevole'    	
+    		else ''
+     		end as esito,
+		 esito.note,
+		case 
+		 	when controlloFisico.fl_controllo_5x23 = 'S' then 'Si'
+		 	else 'No'
+		 end as campioniPrelevati
+		from car_t_controllo controllo
+		 <if test="idOrgNocivo != null">			
+		   inner join car_t_controllo_fisico controlloFisico on controlloFisico.id_controllo = controllo.id_controllo
+		   inner join car_r_controllo_fisico_specie controlloFisicoSp on controlloFisicoSp.id_controllo_fisico = controlloFisico.id_controllo_fisico
+		   inner join car_r_lingua_specie linguaSp on linguasp.id_specie = controlloFisicoSp.id_specie and linguaSp.id_lingua = 138
+		   inner join car_r_lingua_genere linguaGen on linguaGen.id_genere = controlloFisicoSp.id_genere and linguaGen.id_lingua = 138
+		 </if>
+		<if test="idOrgNocivo == null">
+ 		   left outer join car_t_controllo_fisico controlloFisico on controlloFisico.id_controllo = controllo.id_controllo
+		   left outer join car_r_controllo_fisico_specie controlloFisicoSp on controlloFisicoSp.id_controllo_fisico = controlloFisico.id_controllo_fisico
+		   left outer join car_r_lingua_specie linguaSp on linguasp.id_specie = controlloFisicoSp.id_specie and linguaSp.id_lingua = 138 
+		   left outer join car_r_lingua_genere linguaGen on linguaGen.id_genere = controlloFisicoSp.id_genere and linguaGen.id_lingua = 138
+		</if>		  
+		<if test="idIspettore != null">	
+			inner join car_r_controllo_ispettore controlloIsp on controlloIsp.id_controllo = controllo.id_controllo
+		</if>
+		  inner join car_t_centro_aziendale centroAz on centroAz.id_centro_aziendale = controllo.id_centro_aziendale
+		  inner join car_t_spedizioniere sped on sped.id_spedizioniere = centroAz.id_spedizioniere 
+		  inner join car_d_comune com on com.id_comune = centroAz.id_comune
+		  inner join car_d_provincia prov on prov.id_provincia = com.id_provincia  	      
+  	      left join car_t_esito esito on esito.id_controllo = controllo.id_controllo
+		<where>	
+			controllo.id_stato_comunicazione != 5
+			<if test="ragioneSociale != null">	
+			<bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />		
+			     AND UPPER(sped.denom_spedizioniere) like UPPER(#{ragioneSociale})
+			</if> 
+			<if test="codiceRuop != null">
+			<bind name="codiceRuop" value="'%' + codiceRuop + '%'" />				
+			    AND UPPER(sped.codice_ruop) like UPPER(#{codiceRuop})
+			</if> 
+			<if test="idProvincia != null">		
+			   AND prov.id_provincia = #{idProvincia}
+			</if> 
+			<if test="idComune != null">						
+			   AND com.id_comune = #{idComune}
+			</if> 
+			<if test="partitaIva != null">				
+			   AND sped.partita_iva = #{partitaIva}
+			</if>
+			<if test="dataControlloInizio != null">				
+			   AND controllo.data_controllo >= #{dataControlloInizio}
+			</if>
+			<if test="dataControlloFine != null">				
+			   AND #{dataControlloFine} >= controllo.data_controllo
+			</if>
+			<if test="tipologiaAttivita != null">
+				<bind name="tipologiaAttivita" value="'%' + tipologiaAttivita + '%'" />
+				  AND upper(sped.tipologia_attivita) like UPPER(#{tipologiaAttivita})
+			</if>
+			<if test="idIspettore != null">		
+			   AND controlloIsp.id_ispettore = #{idIspettore}			     	
+			</if>
+			<if test="idOrgNocivo != null">
+			  AND controlloFisicoSp.id_specie in
+		  		(select zonaProtetta.id_specie from car_d_zona_protetta zonaProtetta where zonaProtetta.id_org_nocivo = #{idOrgNocivo})						
+			</if>
+		</where> 
+		ORDER BY sped.denom_spedizioniere, centroAz.cod_centro_aziendale, controllo.id_controllo DESC     		
+	</select>
+	
+	<select id="getElencoReportCampioni" parameterType="it.aizoon.ersaf.form.RicercaReportControlliForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+		select 
+			cts.denom_spedizioniere as ragioneSociale,
+			cts.codice_ruop,
+			ctc.numero_verbale,
+			ctc.data_controllo,
+			campione.cod_campione_inizio as codCampioneInizio,
+			campione.cod_campione_fine as codCampioneFine,
+			ctca.cod_centro_aziendale,
+			cdtc.desc_estesa_it as descrizione,
+			crlg.denom_genere,
+			crls.denom_specie,
+			case
+		    	when UPPER(campione.esito_rdp ) = 'P' then 'Presente'
+		    	else 'Assente'
+		    	end as esitoRdp,
+		    campione.data_rdp,
+		    cdon.desc_estesa,
+		    campione.note,
+		    case
+		    	when UPPER(campione.fl_cofinanziato ) = 'S' then 'Si'
+		    	else 'No'
+		    	end as cofinanziato,
+		    cdon.desc_estesa as organismoNocivo,
+		    campione.num_rdp,
+		    case
+		    	when UPPER(crcon.fl_ricerca_accertato) = 'A' then 'Accertato'
+		    	else 'Ricerca'
+		    	end as flRicercaAccertato
+		from car_t_controllo ctc
+		inner join car_t_campione campione on campione.id_controllo = ctc.id_controllo 
+		inner join car_d_tipologia_campione cdtc on cdtc.id_tipologia_campione =campione.id_tipologia_campione 
+		inner join car_t_centro_aziendale ctca on ctca.id_centro_aziendale = ctc.id_centro_aziendale 
+		inner join car_t_spedizioniere cts on cts.id_spedizioniere = ctca.id_spedizioniere 
+		left join car_r_lingua_genere crlg on crlg.id_genere = campione.id_genere AND crlg.id_lingua = 138
+		left join car_r_lingua_specie crls on crls.id_specie = campione.id_specie AND crls.id_lingua = 138
+		inner join car_r_campione_org_noc crcon on crcon.id_campione = campione.id_campione 
+		inner join car_d_org_nocivo cdon on cdon.id_org_nocivo = crcon.id_org_nocivo 
+		inner join car_t_controllo_fisico ctcf on ctcf.id_controllo = ctc.id_controllo 
+		where ctc.id_stato_comunicazione != 5 and ctcf.fl_controllo_5x23 = 'S'
+		<if test="codCampione != null">				
+		     AND campione.cod_campione_inizio = #{codCampione} 
+		</if>
+		<if test="idOrgNocivo != null">		
+		     AND #{idOrgNocivo} = cdon.id_org_nocivo
+		</if>
+		<if test="genere != null">		
+		     AND UPPER(crlg.denom_genere) = UPPER(#{genere})
+		</if>
+		<if test="idSpecieList != null">				
+		AND crls.id_specie in	  
+		<foreach item = "item" index = "index" collection = "idSpecieList"
+		     open = "(" separator = "," close = ")">
+		     #{item}
+		   </foreach>    
+		</if>
+		<if test="dataRdpInizio != null">				
+		     AND ctc.data_controllo >= #{dataRdpInizio} 
+		</if>
+		<if test="dataRdpFine != null">				
+		     AND  #{dataRdpFine} >= ctc.data_controllo 
+		</if>
+		ORDER BY campione.id_campione DESC	
+	</select> 
+	
+	<select id="getElencoReportMisure" parameterType="it.aizoon.ersaf.form.RicercaReportControlliForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+		select 
+		cts.denom_spedizioniere as ragioneSociale,
+		cts.codice_ruop,
+		cts.cuaa,
+		cts.partita_iva,
+		ctca.cod_centro_aziendale,
+		cdc.denom_comune as comune,
+		cdp.denom_provincia as provincia,
+		ctmu.numero_verbale_mf as numeroVerbale,
+		ctmu.data_misura_disp as dataMisura,
+		(select string_agg(ctu.cognome || ' ' || ctu.nome , '; ')
+				 from car_r_misura_ispettore crmi
+				 inner join car_t_ispettore cti on cti.id_ispettore = crmi.id_ispettore  
+				 inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+				 where crmi.id_misura_ufficiale = ctmu.id_misura_ufficiale ) as ispettore,
+		(select string_agg(cdtm.desc_estesa, '; ')
+		  from car_r_misura_tipologia crmt  
+		 inner join car_d_tipologia_misura cdtm on cdtm.id_tipologia_misura = crmt.id_tipologia_misura  
+		 where crmt.id_misura_ufficiale = ctmu.id_misura_ufficiale) as misuraApplicata,
+		cdon.desc_estesa as descOrgNocivo,
+		crlg.denom_genere,
+		crls.denom_specie,
+		crmon.numero_piante, 
+		ctmu.numero_verbale_co,
+		ctmu.data_constatazione,
+		case
+	    	when UPPER(ctmu.fl_esito_constatazione) = 'S' then 'Positivo'
+	    	when UPPER(ctmu.fl_esito_constatazione) = 'N' then 'Negativo'
+	    	else 'Parziale'
+	    	end as esitoConstatazione,
+		ctmu.note_constatazione 
+		from car_t_controllo ctc
+		inner join car_t_centro_aziendale ctca on ctca.id_centro_aziendale = ctc.id_centro_aziendale 
+		inner join car_t_spedizioniere cts on cts.id_spedizioniere = ctca.id_spedizioniere 
+		inner join car_d_comune cdc on cdc.id_comune = ctca.id_comune
+		inner join car_d_provincia cdp on cdp.id_provincia = cdc.id_provincia
+		inner join car_t_misura_ufficiale ctmu on ctmu.id_controllo = ctc.id_controllo
+		left join car_r_misura_org_noc crmon on	crmon.id_misura_ufficiale = ctmu.id_misura_ufficiale
+		left join car_d_org_nocivo cdon on cdon.id_org_nocivo = crmon.id_org_nocivo
+		left join car_r_lingua_genere crlg on crlg.id_genere = crmon.id_genere and crlg.id_lingua = 138
+		left join car_r_lingua_specie crls on crls.id_specie = crmon.id_specie and crls.id_lingua = 138
+		where ctc.id_stato_comunicazione != 5
+		<if test="dataMisuraInizio != null">				
+		     AND ctmu.data_misura_disp >= #{dataMisuraInizio} 
+		</if>
+		<if test="dataMisuraFine != null">				
+		     AND #{dataMisuraFine}  >= ctmu.data_misura_disp 
+		</if> 
+		<if test="numeroVerbale != null">				
+		     AND ctmu.numero_verbale_mf = #{numeroVerbale} 
+		</if> 
+		<if test="ispettore != null">				
+		     AND UPPER(#{ispettore}) in  
+						     				(select UPPER(ctu.cognome) || ' ' || UPPER(ctu.nome)
+											 from car_r_controllo_ispettore crci
+											 inner join car_t_ispettore cti on crci.id_ispettore = cti.id_ispettore
+											 inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+											 where crci.id_controllo = ctc.id_controllo 
+											)
+		</if>
+		<if test="idOrgNocivo != null">		
+		     AND #{idOrgNocivo} = cdon.id_org_nocivo
+		</if>
+	</select>
+	<select id="getElencoReportMonitoraggi" parameterType="it.aizoon.ersaf.form.RicercaReportControlliForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+	
+	</select>
+	
+	
+	<select id="getElencoReportCentriAzRuop" parameterType="it.aizoon.ersaf.form.RicercaReportAutorizzazioniForm"	resultType="it.aizoon.ersaf.dto.ReportDTO">
+	     select distinct
+			  centroaz.id_centro_aziendale ,
+			  statoAzienda.desc_estesa as descStatoAzienda,
+			  centroaz.cod_centro_aziendale ,
+			  upper(centroaz.denominazione) denomCentroAziendale,
+			  domanda.id_domanda,
+			  domanda.id_tipo_comunicazione,
+			  upper(sped.denom_spedizioniere) as ragioneSociale,
+			  sped.cuaa,
+			  sped.partita_iva,
+			  prov.sigla_provincia,
+			  comune.denom_comune,
+			  upper(centroAz.indirizzo) as indirizzo,
+			  centroAz.cod_centro_aziendale,
+			  upper(sped.codice_ruop) as codiceRuop,
+			  centroAz.cellulare,
+			  centroAz.email, 
+			  utente.cognome ||' '|| utente.nome as referenteIspettore,
+			  centroAz.id_tipologia_passaporto,
+			  tipPassaporto.desc_estesa as descTipologiaPassaporto,
+			  centroAz.tariffa,
+			  domanda.numero_protocollo,
+			  domanda.data_protocollo, 
+			  domanda.data_inserimento as dataRichiestaPassaporto,
+			  centroAz.data_update as dataVariazioneStato,	  
+			  domanda.data_aggiornamento as dataVariazionePassaporto  
+			from
+				car_t_centro_aziendale centroAz
+				inner join car_r_domanda_centro_az domandaCentroAz on domandacentroaz.id_centro_aziendale = centroAz.id_centro_aziendale
+				inner join car_t_domanda domanda on domanda.id_domanda = domandaCentroAz.id_domanda 
+				inner join car_t_spedizioniere sped on sped.id_spedizioniere = centroAz.id_spedizioniere 
+				inner join car_d_stato_azienda statoAzienda on statoAzienda.id_stato_azienda = centroAz.id_stato_azienda
+				inner join car_d_comune comune on comune.id_comune = centroAz.id_comune 
+				inner join car_d_provincia prov on prov.id_provincia = comune.id_provincia 
+				left join car_t_ispettore isp on isp.id_ispettore = centroAz.id_ispettore 
+				left join car_t_utente utente  on utente.id_utente = isp.id_utente
+				left join car_d_tipologia_passaporto tipPassaporto on tipPassaporto.id_tipologia_passaporto = centroAz.id_tipologia_passaporto 
+				inner join (select max(ctd.id_domanda) id_domanda, 
+									crdca.id_centro_aziendale	    				
+						  from car_t_domanda ctd
+						  inner join car_t_spedizioniere sped on sped.id_spedizioniere = ctd.id_spedizioniere 
+						  inner join car_r_domanda_centro_az crdca on crdca.id_domanda = ctd.id_domanda 
+						  where ctd.id_stato_comunicazione in(2,3) and ctd.id_tipo_comunicazione != 4	
+						  and codice_ruop is not null
+						  group by crdca.id_centro_aziendale
+					) as centriAz on centriAz.id_centro_aziendale = centroAz.id_centro_aziendale and centriAz.id_domanda = domanda.id_domanda
+			where
+		  		domanda.id_stato_comunicazione in(2,3) and 
+  				domanda.id_tipo_comunicazione != 4	
+  				and sped.codice_ruop is not null			
+			<if test="idStatoAzienda != null">
+				AND centroAz.id_stato_azienda = #{idStatoAzienda}
+		  	</if> 
+			<if test="ragioneSociale != null">
+				<bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+				AND  upper(coalesce(centroAz.denominazione,sped.denom_spedizioniere)) like UPPER(#{ragioneSociale})
+			</if>
+			<if test="codiceRuop != null">
+				<bind name="codiceRuop" value="'%' + codiceRuop + '%'" />
+				AND  upper(sped.codice_ruop) like UPPER(#{codiceRuop})
+			</if>
+			<if test="idProvincia != null">
+				AND prov.id_provincia = #{idProvincia}
+		  	</if>
+		  	<if test="idComune != null">
+				AND comune.id_comune = #{idComune}
+		  	</if>
+		  	<if test="partitaIva != null">
+				<bind name="partitaIva" value="'%' + partitaIva + '%'" />
+				AND  upper(sped.partita_iva) like UPPER(#{partitaIva})
+			</if>
+			<if test="idTipologiaPassaporto != null">
+				AND  centroAz.id_tipologia_passaporto =  #{idTipologiaPassaporto}
+			</if>
+			<if test="idIspettore != null">
+				AND  centroAz.id_ispettore = #{idIspettore}
+			</if>						
+  	</select>
+  
+</mapper>

@@ -1,0 +1,914 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.ControlloMapper">
+
+	<resultMap id="getAllegatiResultMap" type="it.aizoon.ersaf.dto.AllegatoDTO">
+		<id column="id_tipo_allegato" jdbcType="INTEGER" property="idTipoAllegato" />
+		<result column="desc_estesa" jdbcType="VARCHAR" property="descEstesa" />
+		<result column="fl_obbligatorio" jdbcType="BOOLEAN" property="flagObbligatorio" />
+		<result column="fl_multiplo" jdbcType="CHAR" property="flagMultiplo" />
+
+		<collection property="listaAllegatiControllo"
+			ofType="it.aizoon.ersaf.dto.generati.CarTAllegatoControllo">
+			<id column="id_allegato_controllo" jdbcType="NUMERIC" property="idAllegatoControllo" />
+			<result column="desc_allegato" jdbcType="VARCHAR" property="descAllegato" />
+			<result column="nome_file" jdbcType="VARCHAR" property="nomeFile" />
+		</collection>
+	</resultMap>
+
+
+	<resultMap id="getCampioniResultMap" type="it.aizoon.ersaf.dto.CampioneDTO">
+		<id column="id_campione" jdbcType="INTEGER" property="idCampione" />
+		<result column="descGenere" jdbcType="VARCHAR" property="descGenere" />
+		<result column="descSpecie" jdbcType="VARCHAR" property="descSpecie" />
+		<result column="descTipologiaCampione" jdbcType="VARCHAR"
+			property="descTipologiaCampione" />
+		<result column="cod_campione_inizio" jdbcType="VARCHAR"
+			property="codCampioneInizio" />
+		<result column="cod_campione_fine" jdbcType="VARCHAR" property="codCampioneFine" />
+		<result column="fl_sintomatico" jdbcType="VARCHAR" property="flSintomatico" />
+		<result column="descTipoCampione" jdbcType="VARCHAR" property="descTipoCampione" />
+		<result column="data_rdp" jdbcType="VARCHAR" property="dataRdp" />
+		<result column="esito_rdp" jdbcType="VARCHAR" property="esitoRdp" />
+		<result column="num_rdp" jdbcType="VARCHAR" property="numRdp" />
+		<result column="note" jdbcType="VARCHAR" property="note" />
+		<result column="fl_sacchetti" jdbcType="VARCHAR" property="flSacchetti" />
+		<result column="fl_banda" jdbcType="VARCHAR" property="flBanda" />
+		<result column="fl_analisi" jdbcType="VARCHAR" property="flAnalisi" />
+		<collection property="orgNociviDaRicercareList"
+			ofType="it.aizoon.ersaf.dto.CodeDescriptionDTO">
+			<id column="id_org_novivo" jdbcType="NUMERIC" property="id" />
+			<result column="descrOrgNocivo" jdbcType="VARCHAR" property="descr" />
+		</collection>
+		<collection property="orgNociviAccertatiList"
+			ofType="it.aizoon.ersaf.dto.CodeDescriptionDTO">
+			<id column="id_org_novivo_acc" jdbcType="NUMERIC" property="id" />
+			<result column="descrOrgNocivoAcc" jdbcType="VARCHAR" property="descr" />
+		</collection>
+	</resultMap>
+	
+	
+	  <select id="getDettaglioAziendaByIdSpedizioniere" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.ControlloDTO">
+     select 
+	  sped.id_spedizioniere,
+	  sped.id_tipo_spedizioniere, 
+	  sped.cuaa,
+	  sped.denom_spedizioniere, 
+	  sped.nome,
+	  sped.cognome,
+	  sped.telefono,
+	  sped.cellulare,
+	  sped.fax,
+	  sped.cap,
+	  sped.indirizzo,
+	  sped.id_comune,
+	  comune.id_provincia,
+	  comune.denom_comune,
+	  provincia.denom_provincia,
+	  sped.email,
+	  sped.pec,
+	  sped.partita_iva,
+	  sped.tipo_spedizioniere_altro,
+	  cdts.denom_tipo_spedizioniere,
+	  upper(sped.tipologia_attivita) as tipologiaAttivita ,
+	  sped.codice_fitok
+	from 
+	  car_t_spedizioniere sped 
+	inner join car_d_comune comune on sped.id_comune = comune.id_comune 
+	inner join car_d_provincia provincia on provincia.id_provincia = comune.id_provincia 
+	inner join car_d_tipo_spedizioniere cdts on cdts.id_tipo_spedizioniere =sped.id_tipo_spedizioniere 
+	where 
+	  sped.id_spedizioniere = #{idSpedizioniere,jdbcType=DECIMAL}
+	</select>	
+	
+	<select id="getElencoOperatori" parameterType="it.aizoon.ersaf.form.RicercaOperatoreForm" resultType="it.aizoon.ersaf.dto.SpedizioniereDTO">
+	  select 
+	    max(id_spedizioniere) as id_spedizioniere,
+		cuaa,
+		partita_iva,
+		denomSpedizioniere,
+		provinciaSedeLegale,
+		codiceRuop,
+		codiceCentroAz,
+		max(tipoPassaporto) as tipoPassaporto,
+		max(ispettoreAssegnatario) as ispettoreAssegnatario,
+		max(id_stato_comunicazione) as id_stato_comunicazione,
+		max(id_centro_aziendale) as id_centro_aziendale
+       from 
+       (
+         select
+			  spediz.id_spedizioniere,
+			  upper(spediz.cuaa) as cuaa,
+			  spediz.partita_iva,
+			  upper(spediz.denom_spedizioniere) as denomSpedizioniere,	  
+			  upper(prov.denom_provincia) as provinciaSedeLegale,
+			  upper(spediz.codice_ruop) as codiceRuop, 
+			  centroAz.cod_centro_aziendale as codiceCentroAz,			  
+			  upper(utente.cognome || ' ' || utente.nome) as ispettoreAssegnatario,
+			  tipPass.desc_breve as tipoPassaporto,
+         	  dom.id_stato_comunicazione,
+         	  centroAz.id_centro_aziendale    
+    	from 
+    	  	car_t_domanda dom 
+    	  	inner join (select 
+                    max(domanda.id_domanda) id_domanda, 
+     				domanda.id_spedizioniere 
+				 from car_t_domanda domanda 
+		            inner join car_t_spedizioniere cts on cts.id_spedizioniere = domanda.id_spedizioniere 
+		            and domanda.id_stato_comunicazione in(2,3)
+		            and domanda.id_tipo_comunicazione != 4
+				    inner join car_r_flusso_domanda flussoDom on flussoDom.id_domanda = domanda.id_domanda
+					and flussoDom.progressivo = (select max(flussoDomanda.progressivo)
+						  							 from car_r_flusso_domanda flussoDomanda
+						 							where flussoDomanda.id_flusso = flussoDom.id_flusso 
+					   								)
+				    group by domanda.id_spedizioniere
+					) as sped on sped.id_domanda = dom.id_domanda and sped.id_spedizioniere = dom.id_spedizioniere
+			inner join car_t_spedizioniere spediz on spediz.id_spedizioniere = dom.id_spedizioniere 
+			inner join car_d_comune comune on comune.id_comune = spediz.id_comune
+			inner join car_d_provincia prov on comune.id_provincia = prov.id_provincia
+			inner join car_d_tipo_comunicazione tipoCom on tipoCom.id_tipo_comunicazione = dom.id_tipo_comunicazione
+			inner join car_t_centro_aziendale centroAz on centroAz.id_spedizioniere = dom.id_spedizioniere and centroAz.id_stato_azienda = 1
+			left outer join car_t_ispettore isp on centroAz.id_ispettore = isp.id_ispettore 
+			left outer join car_t_utente utente on utente.id_utente = isp.id_utente
+			left outer join car_d_tipologia_passaporto as tipPass on centroAz.id_tipologia_passaporto = tipPass.id_tipologia_passaporto			
+			<if test="idTipoAttivita != null">
+			  inner join car_r_att_materiale_utente attMatUtente on attMatUtente.id_domanda = dom.id_domanda
+			</if>
+			<if test="idGenere != null or idSpecie != null or idOrgNocivo != null">
+			  inner join car_r_domanda_centro_az domCentroAz on domCentroAz.id_domanda = dom.id_domanda 
+			  and domCentroAz.id_centro_aziendale = centroAz.id_centro_aziendale
+			  inner join car_t_voce_utente voceUt on voceUt.id_centro_aziendale = centroAz.id_centro_aziendale
+			  inner join car_r_voce_utente_specie voceUtSp on voceUtSp.id_voce_utente = voceUt.id_voce_utente    
+			  inner join (
+				select 
+				   max(voceUtSp.id_voce_utente_specie) idVoceUtenteSpecie,
+				   voceUtSp.id_voce_utente 
+				from car_r_voce_utente_specie voceUtSp
+				  inner join car_t_voce_utente ctvu on ctvu.id_voce_utente = voceUtSp.id_voce_utente
+				  <if test="idSpecie != null">				
+	      			and voceUtSp.id_specie in
+		    		<foreach item = "item" index = "index" collection = "idSpecie"
+	          			open = "(" separator = "," close = ")">
+	          			#{item}
+	        		</foreach>    
+        		  </if>
+				  group by voceUtSp.id_voce_utente
+				) as v on v.idVoceUtenteSpecie =  voceUtSp.id_voce_utente_specie
+			</if>
+			<if test="idOrgNocivo != null">
+		  		inner join car_d_zona_protetta zonaProt on zonaProt.id_genere = voceUtSp.id_genere
+			</if>
+		where	
+	    spediz.attivo = true
+	    <if test="idIspettore != null">
+          and centroAz.id_ispettore = #{idIspettore}
+        </if>
+        <if test="idProvincia != null">
+          and prov.id_provincia = #{idProvincia}
+        </if>        
+        <if test="idTipoAttivita != null">
+          and attMatUtente.id_tipo_attivita = #{idTipoAttivita}
+		</if>
+		<if test="idGenere != null">
+		  and voceUtSp.id_genere = #{idGenere}
+		</if>
+		<if test="idSpecie != null">				
+	      and voceUtSp.id_specie in
+		    <foreach item = "item" index = "index" collection = "idSpecie"
+	          open = "(" separator = "," close = ")">
+	          #{item}
+	        </foreach>    
+        </if>
+        <if test="idOrgNocivo != null">
+		  and zonaProt.id_org_nocivo = #{idOrgNocivo}
+		</if>		
+		<if test="ragioneSociale != null">
+		  <bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+		  and upper(spediz.denom_spedizioniere) like upper(#{ragioneSociale})
+		</if>
+		<if test="cuaa != null">
+		  and upper(spediz.cuaa) = upper(#{cuaa})  
+		</if>
+		<if test="idUtente != null">
+  	      and spediz.id_spedizioniere in(
+          	select 
+			  utente.id_spedizioniere 
+			from 
+			  car_t_utente utente	  
+			where
+			  utente.id_utente = #{idUtente}
+			union 
+			  select 
+			    utSped.id_spedizioniere 
+			  from 
+			    car_r_utente_spedizionieri utSped
+			  where utSped.id_utente = #{idUtente} 
+            )
+        </if>		
+	union
+	select
+	  spediz.id_spedizioniere, 
+	  upper(spediz.cuaa) as cuaa,
+	  spediz.partita_iva,
+	  upper(spediz.denom_spedizioniere) as denomSpedizioniere,	  
+	  upper(prov.denom_provincia) as provinciaSedeLegale,
+	  upper(spediz.codice_ruop) as codiceRuop,
+	  upper(centroAz.cod_centro_aziendale) as codiceCentroAz,
+	  null as tipoPassaporto,
+	  null as ispettoreAssegnatario,
+	  com.id_stato_comunicazione,
+	  centroAz.id_centro_aziendale  
+	from
+	  car_t_comunicazione com
+	  inner join car_t_centro_aziendale centroAz on com.id_centro_aziendale = centroAz.id_centro_aziendale and centroAz.id_stato_azienda = 1
+	  inner join car_t_spedizioniere spediz on spediz.id_spedizioniere  = centroAz.id_spedizioniere 
+	  inner join (select 
+	                    max(comunicazione.id_comunicazione) id_comunicazione, 
+	     				cts.id_spedizioniere 
+					 from car_t_comunicazione comunicazione 
+					    inner join car_t_centro_aziendale ctca on ctca.id_centro_aziendale = comunicazione.id_centro_aziendale 
+					    inner join car_t_spedizioniere cts on cts.id_spedizioniere = ctca.id_spedizioniere 		            
+			            and comunicazione.id_stato_comunicazione in(2,3)		           				    
+					    group by cts.id_spedizioniere
+						) as sped on sped.id_comunicazione = com.id_comunicazione and sped.id_spedizioniere = centroAz.id_spedizioniere    
+	  inner join car_d_tipo_comunicazione tipoCom on tipoCom.id_tipo_comunicazione = com.id_tipo_comunicazione    
+	  inner join car_d_comune comune on comune.id_comune = spediz.id_comune
+	  inner join car_d_provincia prov on comune.id_provincia = prov.id_provincia	  
+	  <if test="idGenere != null or idSpecie != null or idOrgNocivo != null">
+	    inner join car_r_comunicazione_specie comSp on comSp.id_comunicazione = com.id_comunicazione 	  
+	    inner join car_d_specie specie on specie.id_specie = comSp.id_specie 
+	    inner join car_d_genere genere on genere.id_genere = specie.id_genere 
+	    inner join (
+		  select 
+		     max(cSp.id_comunicazione_specie) idComSp,
+		     cSp.id_comunicazione 
+		  from 
+		    car_r_comunicazione_specie cSp	
+		  <if test="idSpecie != null">				
+	      where 
+	        cSp.id_specie in 
+		      <foreach item = "item" index = "index" collection = "idSpecie"
+	           open = "(" separator = "," close = ")">
+	            #{item}
+	          </foreach>    
+        </if>  	  
+		  group by cSp.id_comunicazione
+		 ) as v on v.idComSp =  comSp.id_comunicazione_specie and v.id_comunicazione = com.id_comunicazione
+	  </if>	
+	  <if test="idOrgNocivo != null">		
+	  	inner join car_d_zona_protetta zonaProt on zonaProt.id_genere = genere.id_genere 
+	  	inner join car_d_org_nocivo orgNoc on orgnoc.id_org_nocivo = zonaProt.id_org_nocivo
+	  </if>
+	where	
+	    spediz.attivo = true  
+	    <if test="idIspettore != null or idTipoAttivita != null">
+	      and 1 = 0
+	    </if>  
+	    <if test="idProvincia != null">
+          and prov.id_provincia = #{idProvincia}
+        </if>	
+        <if test="idGenere != null">
+          and specie.id_genere = #{idGenere}
+        </if>
+        <if test="idSpecie != null">				
+	      and comSp.id_specie in 
+		    <foreach item = "item" index = "index" collection = "idSpecie"
+	          open = "(" separator = "," close = ")">
+	          #{item}
+	        </foreach>    
+        </if>
+        <if test="idOrgNocivo != null">
+          and orgNoc.id_org_nocivo = #{idOrgNocivo}
+        </if>
+        <if test="ragioneSociale != null">
+		  <bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+		  and upper(spediz.denom_spedizioniere) like upper(#{ragioneSociale})
+		</if>   
+		<if test="cuaa != null">
+		  and upper(spediz.cuaa) = upper(#{cuaa})  
+		</if>
+		<if test="idUtente != null">
+  	      and spediz.id_spedizioniere in(
+          	select 
+			  utente.id_spedizioniere 
+			from 
+			  car_t_utente utente	  
+			where
+			  utente.id_utente = 3
+			union 
+			  select 
+			    utSped.id_spedizioniere 
+			  from 
+			    car_r_utente_spedizionieri utSped
+			  where utSped.id_utente = 3 
+            )
+        </if>      
+	) tot
+	group by 
+		cuaa,
+		partita_iva,
+		codiceCentroAz,
+		denomSpedizioniere,
+		provinciaSedeLegale,
+		codiceRuop
+		order by codiceRuop desc nulls last LIMIT 500
+	</select>
+
+
+  <select id="getElencoControlli" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.ControlloDTO">
+     select 
+	  caz.id_centro_aziendale,
+	  caz.cod_centro_aziendale,
+	  caz.denominazione,
+	  caz.codice_fiscale,
+	  c.id_controllo,
+	  c.data_controllo,
+	  c.ora_inizio_controllo,
+	  c.ora_fine_controllo,
+	  c.altri_soggetti,
+	  c.altre_norme,
+	  c.responsabile_azienda, 
+	  (select desc_breve from car_d_tipo_resp_azienda where id_tipo_resp_azienda=c.id_tipo_resp_azienda) tipo_resp_azienda,
+	  c.misura_ufficiale,
+	  c.monitoraggio_cofinanziato 
+	from 
+	  	car_t_controllo c
+	  	inner join car_t_centro_aziendale caz on caz.id_centro_aziendale = c.id_centro_aziendale		
+		inner join car_r_controllo_tipo_semente sem on sem.id_controllo = c.id_controllo 
+		inner join car_r_controllo_ispettore isp on isp.id_controllo = c.id_controllo 
+		inner join car_r_controllo_norma_verbale norma on norma.id_controllo = c.id_controllo 
+		inner join car_r_controllo_tipologia tipo on tipo.id_controllo = c.id_controllo 
+	where 
+	  c.id_centro_aziendale = #{idCentroAz,jdbcType=DECIMAL}
+	  and c.id_stato_comunicazione != 5
+	</select>	
+	
+	<select id="getDettaglioCentroAzByIdCentroAz" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.ControlloDTO">
+    select
+      centroAz.id_centro_aziendale,
+      centroAz.cod_centro_aziendale,
+      centroAz.denominazione as denominazioneCa,
+      comune.id_comune as idComuneCa,
+      comune.denom_comune as denomComuneCa,
+      prov.id_provincia as idProvinciaCa,
+      prov.denom_provincia as denomProvinciaCa,
+      centroAz.cap as capCa,
+      centroAz.indirizzo as indirizzoCa,
+      centroAz.frazione as frazioneCa,
+      centroAz.telefono astelefonoCa,
+      centroAz.cellulare as cellulareCa,
+      centroAz.email as emailCa,
+      centroAz.pec as pecCa,
+      centroAz.id_ispettore,
+      centroAz.id_tipologia_passaporto, 
+      centroAz.id_stato_azienda,
+      stato.desc_estesa as descrStatoAzienda,
+      centroAz.tariffa
+    from car_t_centro_aziendale centroAz
+   inner join car_d_comune comune on centroAz.id_comune = comune.id_comune 
+   inner join car_d_provincia prov on comune.id_provincia  = prov.id_provincia    
+   inner join car_d_stato_azienda stato on stato.id_stato_azienda = centroAz.id_stato_azienda
+     and centroAz.id_centro_aziendale = #{idCentroAziendale,jdbcType=DECIMAL}
+	</select>	
+  
+    <select id="deleteRControlloTipologiaByIdControllo" parameterType="java.lang.Long">
+ 	delete
+	from 
+		car_r_controllo_tipologia
+	where 
+	   id_controllo = #{idControllo,jdbcType=DECIMAL};
+	</select>
+
+	<select id="deleteRControlloTipoSementeByIdControllo"
+		parameterType="java.lang.Long">
+		delete
+		from
+		car_r_controllo_tipo_semente
+		where
+		id_controllo = #{idControllo,jdbcType=DECIMAL};
+	</select>
+
+	<select id="deleteRControlloNormaVerbaleByIdControllo"
+		parameterType="java.lang.Long">
+		delete
+		from
+		car_r_controllo_norma_verbale
+		where
+		id_controllo = #{idControllo,jdbcType=DECIMAL};
+	</select>
+
+	<select id="deleteRControlloIspettoreByIdControllo"
+		parameterType="java.lang.Long">
+		delete
+		from
+		car_r_controllo_ispettore
+		where
+		id_controllo = #{idControllo,jdbcType=DECIMAL};
+	</select>
+
+
+	<select id="getListaAllegatiControllo" parameterType="java.lang.Long"
+		resultMap="getAllegatiResultMap">
+		SELECT
+		tipoAllegato.id_tipo_allegato,
+		tipoAllegato.desc_estesa,
+		tipoDomAllegato.fl_obbligatorio,
+		tipoAllegato.fl_multiplo,
+		allegato.id_allegato_controllo,
+		allegato.desc_allegato,
+		allegato.nome_file
+		FROM
+		car_t_controllo controllo
+		INNER JOIN car_r_tipo_dom_allegato tipoDomAllegato
+		ON controllo.id_tipo_comunicazione =
+		tipoDomAllegato.id_tipo_comunicazione
+		AND tipoDomAllegato.fine_validita IS NULL
+		INNER JOIN car_d_tipo_allegato tipoAllegato
+		ON tipoDomAllegato.id_tipo_allegato = tipoAllegato.id_tipo_allegato
+		AND tipoAllegato.fine_validita IS NULL
+		LEFT OUTER JOIN car_t_allegato_controllo allegato
+		ON controllo.id_controllo = allegato.id_controllo
+		AND tipoAllegato.id_tipo_allegato = allegato.id_tipo_allegato
+		WHERE
+		controllo.id_controllo = #{idControllo,jdbcType=DECIMAL}
+		order by tipoDomAllegato.ordinamento, allegato.id_allegato_controllo
+	</select>
+
+	<select id="getSitiProduzioneByIdControlloIdentita"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.SitoProduzioneDTO">
+		select
+		sitoProd.id_sito_produzione,
+		sitoProd.denominazione,
+		sitoProd.ubicazione,
+		sitoProd.id_comune,
+		comune.denom_comune,
+		prov.id_provincia,
+		prov.sigla_provincia,
+		sitoProd.foglio,
+		sitoProd.mappale,
+		sitoProd.superficie
+		from
+		car_r_controllo_identita_sito contrIdSito
+		inner join car_t_sito_produzione sitoProd on sitoProd.id_sito_produzione =
+		contrIdSito.id_sito_produzione
+		left outer join car_d_comune comune on comune.id_comune =
+		sitoProd.id_comune
+		left outer join car_d_provincia prov on comune.id_provincia =
+		prov.id_provincia
+		where
+		contrIdSito.id_controllo_identita = #{idControlloIdentita,jdbcType=DECIMAL}
+		order by
+		comune.denom_comune, sitoProd.denominazione
+	</select>
+
+	<select id="getMaxIdDomandaValidaByIdCentroAz" parameterType="java.lang.Long"
+		resultType="java.lang.Long">
+		select
+		max(domanda.id_domanda)
+		from car_t_domanda domanda
+		inner join car_r_domanda_centro_az crdca on
+		crdca.id_domanda = domanda.id_domanda
+		inner join car_t_centro_aziendale
+		ctca on ctca.id_centro_aziendale = crdca.id_centro_aziendale
+		where ctca.id_centro_aziendale = #{idCentroAziendale,jdbcType=DECIMAL}
+		and
+		domanda.id_stato_comunicazione in(2,3)
+		and
+		domanda.id_tipo_comunicazione != 4
+	</select>
+
+	<select id="getResponsabileFitosanitarioByIdDomanda"
+		parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.generati.CarTResponsabilePassaporto">
+		select
+		resp.id_responsabile_passaporto,
+		resp.cognome,
+		resp.nome,
+		resp.telefono
+		from
+		car_t_domanda dom
+		inner join car_t_responsabile_passaporto resp on
+		resp.id_responsabile_passaporto = dom.id_responsabile_passaporto
+		where
+		dom.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getControlliByIdCentroAziendale" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.ControlloDTO">
+		select
+		ctc.id_controllo,
+		case when lower(cte.fl_esito) = 's' then
+		'Favorevole'
+		when lower(cte.fl_esito) = 'n' then
+		'Non favorevole'
+		end esitoControllo,
+		cte.fl_esito,
+		ctc.data_controllo,
+		ctc.numero_verbale,
+		ctc.numero_verbale||'/IS' as numeroVerbaleIS
+		from car_t_controllo ctc
+		left join car_t_esito cte on cte.id_controllo = ctc.id_controllo
+		where ctc.id_centro_aziendale = #{idCentroAziendale,jdbcType=DECIMAL}
+			  and ctc.id_stato_comunicazione != 5
+		order
+		by ctc.data_controllo desc
+	</select>
+
+	<select id="lockControllo" resultType="java.lang.Long"
+		parameterType="java.lang.Long">
+		SELECT id_controllo
+		FROM car_t_controllo
+		WHERE id_controllo = #{idControllo,jdbcType=DECIMAL}
+		FOR UPDATE
+	</select>
+
+	<select id="generaNumeroVerbale" parameterType="java.lang.Long"
+		resultType="java.lang.Long">
+		select max(coalesce(numero_verbale, 0)) +1
+		from car_t_controllo ctc
+	</select>
+
+	<select id="getListaCampioniByIdControllo" parameterType="java.lang.Long"
+		resultMap="getCampioniResultMap">
+		SELECT
+			camp.id_campione,
+			(SELECT
+			upper(lingua_genere.denom_genere)
+			FROM car_d_genere genere
+			INNER JOIN car_r_lingua_genere lingua_genere ON genere.id_genere =
+			lingua_genere.id_genere
+			INNER JOIN car_d_lingua lingua ON lingua_genere.id_lingua =
+			lingua.id_lingua
+			WHERE
+			upper(lingua.cod_lingua) = 'LA'
+			AND genere.id_genere = camp.id_genere) as descGenere,
+			(SELECT
+			upper(lingua_specie.denom_specie)
+			FROM car_d_specie specie
+			INNER JOIN car_r_lingua_specie lingua_specie
+			ON specie.id_specie = lingua_specie.id_specie
+			INNER JOIN car_d_lingua lingua
+			ON lingua_specie.id_lingua = lingua.id_lingua
+			WHERE upper(lingua.cod_lingua) = 'LA'
+			AND specie.id_specie = camp.id_specie) as descSpecie,
+			upper(tipCampione.desc_estesa_it) as descTipologiaCampione,
+			upper(camp.cod_campione_inizio) as cod_campione_inizio,
+			upper(camp.cod_campione_fine) as cod_campione_fine,
+			camp.fl_sintomatico,
+			case 
+			  when camp.fl_sintomatico = 'S' then 'Sintomatico'
+			  when camp.fl_sintomatico = 'A' then 'Asintomatico'
+			  when camp.fl_sintomatico = 'NA' then 'Non applicabile'
+			  else null
+			end descTipoCampione,
+			orgNoc.id_org_nocivo as id_org_novivo,
+			orgNoc.desc_estesa as descrOrgNocivo,
+			camp.data_rdp,
+			camp.esito_rdp,
+			camp.num_rdp,
+			orgNocAcc.id_org_nocivo as id_org_novivo_acc,
+			orgNocAcc.desc_estesa as descrOrgNocivoAcc,
+			camp.note,
+			camp.fl_sacchetti,
+			camp.fl_banda,
+			camp.fl_analisi
+	 FROM car_t_campione camp
+	INNER JOIN car_d_tipologia_campione tipCampione ON tipCampione.id_tipologia_campione = camp.id_tipologia_campione
+	INNER JOIN car_r_campione_org_noc campOrgNoc ON camp.id_campione = campOrgNoc.id_campione AND campOrgNoc.fl_ricerca_accertato = 'R'
+	INNER JOIN car_d_org_nocivo orgNoc on orgNoc.id_org_nocivo = campOrgNoc.id_org_nocivo
+	 LEFT JOIN car_r_campione_org_noc campOrgNocAcc ON camp.id_campione  = campOrgNocAcc.id_campione AND campOrgNocAcc.fl_ricerca_accertato = 'A'
+     LEFT JOIN car_d_org_nocivo orgNocAcc ON orgNocAcc.id_org_nocivo = campOrgNocAcc.id_org_nocivo
+	WHERE
+		camp.id_controllo = #{idControllo,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getSementiByIdControllo" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.SementeDTO">
+		select id_tipologia_semente,
+		quantita,
+		note
+		from car_r_controllo_tipo_semente crcts
+		where id_controllo = #{idControllo,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getGenereSpecieByIdControlloFisisco" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.GenereSpecieDTO">
+		select crcfs.id_genere,
+			crcfs.id_controllo_fisico_specie,
+			crlg.denom_genere,
+			crcfs.id_specie,
+			crls.denom_specie,
+			num_piante as numero_piante,
+			crcfs.num_piante_sintomatiche,
+			crcfs.id_org_nocivo,
+			cdon.desc_breve as descBreveOn
+		from 
+			car_r_controllo_fisico_specie crcfs
+			inner join car_r_lingua_genere crlg on crlg.id_genere = crcfs.id_genere and
+			crlg.id_lingua = 138
+			left outer join car_r_lingua_specie crls on crls.id_specie = crcfs.id_specie and
+			crls.id_lingua = 138
+			left join car_d_org_nocivo cdon on cdon.id_org_nocivo = crcfs.id_org_nocivo
+		where 
+		  id_controllo_fisico = #{idControlloFisico,jdbcType=DECIMAL}
+		order by
+		 crlg.denom_genere, crls.denom_specie
+	</select>
+
+	<select id="getElencoOperatoriAttivi" parameterType="it.aizoon.ersaf.form.RicercaOperatoreForm"
+		resultType="it.aizoon.ersaf.dto.SpedizioniereDTO">
+		SELECT distinct
+		sped.id_spedizioniere,
+		upper(sped.cuaa) as cuaa,
+		sped.partita_iva,
+		upper(sped.denom_spedizioniere) as denomSpedizioniere,
+		upper(sped.codice_ruop) as codiceRuop,
+		upper(centroAz.cod_centro_aziendale) as codiceCentroAz,
+		upper(tipPass.desc_breve) as tipoPassaporto,
+		upper(utente.cognome || ' ' || utente.nome) as ispettoreAssegnatario,
+		centroAz.id_centro_aziendale	
+		FROM
+		car_t_spedizioniere sped
+		inner join car_t_centro_aziendale centroAz on centroAz.id_spedizioniere =
+		sped.id_spedizioniere AND centroAz.id_stato_azienda = 1
+		inner join car_d_comune comune on comune.id_comune = sped.id_comune
+		inner join car_d_provincia prov on comune.id_provincia = prov.id_provincia
+		left outer join car_t_ispettore isp on isp.id_ispettore =
+		centroAz.id_ispettore
+		left outer join car_t_utente utente on utente.id_utente = isp.id_utente
+		left outer join car_d_tipologia_passaporto tipPass on
+		tipPass.id_tipologia_passaporto = centroAz.id_tipologia_passaporto
+		WHERE
+		sped.attivo = true
+		<if test="idIspettore != null">
+			and centroAz.id_ispettore = #{idIspettore}
+		</if>
+		<if test="idProvincia != null">
+			and prov.id_provincia = #{idProvincia}
+		</if>
+		<if test="ragioneSociale != null">
+			<bind name="ragioneSociale" value="'%' + ragioneSociale + '%'" />
+			and upper(sped.denom_spedizioniere) like upper(#{ragioneSociale})
+		</if>
+		<if test="cuaa != null">
+			and upper(sped.cuaa) = upper(#{cuaa})
+		</if>
+		<if test="idUtente != null">
+			and sped.id_spedizioniere in(
+			select
+			utente.id_spedizioniere
+			from
+			car_t_utente utente
+			where
+			utente.id_utente = #{idUtente}
+			union
+			select
+			utSped.id_spedizioniere
+			from
+			car_r_utente_spedizionieri utSped
+			where utSped.id_utente = #{idUtente}
+			)
+		</if>
+		order by denomSpedizioniere asc nulls last LIMIT 500
+	</select>
+
+	<select id="generaNumeroVerbaleMf" parameterType="java.lang.Long"
+		resultType="java.lang.Long">
+		select coalesce(max(numero_verbale_mf)+1,1)
+		from car_t_misura_ufficiale
+	</select>
+
+	<select id="generaNumeroVerbaleCo" parameterType="java.lang.Long"
+		resultType="java.lang.Long">
+		select coalesce(max(numero_verbale_co)+1,1)
+		from car_t_misura_ufficiale
+	</select>
+
+	<select id="getListaNormeVerbaliByIdControllo" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.generati.CarDNormaVerbale">
+		select cdnv.id_norma_verbale, cdnv.desc_breve
+		from car_d_norma_verbale cdnv
+		inner join car_r_controllo_norma_verbale crcnv on
+		crcnv.id_norma_verbale = cdnv.id_norma_verbale
+		where crcnv.id_controllo = #{idControllo,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListaSementiByIdControllo" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.SementeDTO">
+		select crcts.id_tipologia_semente,
+		crcts.quantita,
+		crcts.note,
+		cdts.desc_estesa
+		from car_r_controllo_tipo_semente crcts
+		inner join car_d_tipologia_semente cdts on cdts.id_tipologia_semente =
+		crcts.id_tipologia_semente
+		where id_controllo =
+		#{idControllo,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListeTipologiaControlloByIdControllo"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDTipologiaControllo">
+		select cdtc.desc_breve
+		from car_r_controllo_tipologia crct
+		inner join car_d_tipologia_controllo cdtc on cdtc.id_tipologia_controllo =
+		crct.id_tipologia_controllo
+		where crct.id_controllo = #{idControllo,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListaStruttureAttrezzatureByIdControlloFisico"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDStrutturaAttrezzatura">
+		select cdsa.desc_breve
+		from car_r_controllo_fisico_str_att crcfsa
+		inner join car_d_struttura_attrezzatura cdsa on
+		cdsa.id_struttura_attrezzatura = crcfsa.id_struttura_attrezzatura
+		where crcfsa.id_controllo_fisico =
+		#{idControlloFisico,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getMetodiProduzioneByIdControlloFisico"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDMetodoProduzione">
+		select cdmp.desc_breve
+		from car_r_controllo_fisico_met_pro crcfmp
+		inner join car_d_metodo_produzione cdmp on cdmp.id_metodo_produzione =
+		crcfmp.id_metodo_produzione
+		where crcfmp.id_controllo_fisico = #{idControlloFisico,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListaTipiIrrigazioneByIdControlloFisico"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDTipoIrrigazione">
+		select cdti.desc_breve
+		from car_r_controllo_fisico_irriga crcfi
+		inner join car_d_tipo_irrigazione cdti on cdti.id_tipo_irrigazione =
+		crcfi.id_tipo_irrigazione
+		where crcfi.id_controllo_fisico = #{idControlloFisico,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListaConoscenzeProfessionaliByIdControlloFisico"
+		parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.generati.CarDConoscenzaProfessionale">
+		select cdcp.desc_breve
+		from car_r_controllo_fisico_con_prof crcfcp
+		inner join car_d_conoscenza_professionale cdcp on
+		cdcp.id_conoscenza_professionale = crcfcp.id_conoscenza_professionale
+		where crcfcp.id_controllo_fisico =
+		#{idControlloFisico,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getListaRequisitiProfessionaliByIdControlloFisico"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.RequisitiProfessionaliDTO">
+		select cdrp.desc_breve,
+		crcfrp.desc_laurea,
+		crcfrp.desc_diploma
+		from car_r_controllo_fisico_req_prof crcfrp
+		inner join
+		car_d_requisito_professionale cdrp on cdrp.id_requisito_professionale
+		= crcfrp.id_requisito_professionale
+		where crcfrp.id_controllo_fisico = #{idControlloFisico,jdbcType=DECIMAL}
+		order by cdrp.id_requisito_professionale DESC
+	</select>
+
+	<select id="getListaTipologieMisuraByIdMisuraUfficiale"
+		parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.MisuraDTO">
+		select cdtm.desc_estesa,
+		crmt.note_tipologia as note
+		from car_r_misura_tipologia crmt
+		inner join car_d_tipologia_misura cdtm on cdtm.id_tipologia_misura =
+		crmt.id_tipologia_misura
+		where crmt.id_misura_ufficiale = #{idMisuraUfficiale,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getIspettoriDispByIdMisura" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.IspettoreDTO">
+		select ctu.cognome || ' ' || ctu.nome as descIspettore,
+		case when tipo_ispettore = 'I' then 'Ispettore'
+		when tipo_ispettore = 'A'then 'Agente'
+		end ruolo,
+		cti.numero_tessera,
+		cti.id_ispettore
+		from car_r_misura_ispettore crmi
+		inner join car_t_ispettore cti on cti.id_ispettore = crmi.id_ispettore
+		inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+		where crmi.tipo_misura = 'D'
+		and crmi.id_misura_ufficiale = #{idMisuraUfficiale,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getIspettoriConstByIdMisura" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.IspettoreDTO">
+		select ctu.cognome || ' ' || ctu.nome as descIspettore,
+		case when tipo_ispettore = 'I' then 'Ispettore'
+		when tipo_ispettore = 'A'then 'Agente'
+		end ruolo,
+		cti.numero_tessera,
+		cti.id_ispettore
+		from car_r_misura_ispettore crmi
+		inner join car_t_ispettore cti on cti.id_ispettore = crmi.id_ispettore
+		inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+		where crmi.tipo_misura = 'C'
+		and crmi.id_misura_ufficiale = #{idMisuraUfficiale,jdbcType=DECIMAL}
+	</select>
+
+	<select id="getIspettoriControlloByIdControllo" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.IspettoreDTO">
+		select ctu.cognome || ' ' || ctu.nome as descIspettore,
+		case when tipo_ispettore = 'I' then 'Ispettore'
+		when tipo_ispettore = 'A'then 'Agente'
+		end ruolo,
+		cti.numero_tessera,
+		cti.id_ispettore
+		from car_r_controllo_ispettore crci
+		inner join car_t_ispettore cti on cti.id_ispettore = crci.id_ispettore
+		inner join car_t_utente ctu on ctu.id_utente = cti.id_utente
+		where crci.id_controllo = #{idControllo,jdbcType=DECIMAL}
+	</select>
+
+
+<select id="getTipologieAttMaterialeDomandeRuop" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.TipologiaAttMaterialeDTO">
+   select     
+       attMatUt.id_tipo_attivita as idTipologia,
+       tipoAtt.desc_estesa as denomTipologiaEstesa,
+       mat.desc_estesa  
+     from 
+       car_r_att_materiale_utente attMatUt
+       inner join car_d_tipo_attivita tipoAtt on attMatUt.id_tipo_attivita = tipoAtt.id_tipo_attivita
+       left outer join car_d_materiale mat on attMatUt.id_materiale = mat.id_materiale 
+     where 
+       attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+       and attMatUt.id_tipo_attivita != 2
+</select>
+
+
+<select id="getDenomTipologieProduttiveDomandeRuop" resultType="it.aizoon.ersaf.dto.CodeDescriptionDTO">
+  select  distinct    
+    voceUt.id_voce as id,
+	voce.desc_estesa as descr		
+   from
+       car_t_voce_utente voceUt 
+       inner join car_d_voce voce on voce.id_voce = voceUt.id_voce 
+       where voceUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+       and voce.id_tipo_modello = #{idTipoModello,jdbcType=DECIMAL}
+	   and voce.gruppo = #{gruppo,jdbcType=DECIMAL}
+</select>
+
+<select id="getVersioneControlloByDataInserimento"  resultType="java.lang.Long">
+  SELECT id_versione_controllo 
+    FROM car_d_versione_controllo cdvc 
+   WHERE #{dataInserimento,jdbcType=TIMESTAMP} BETWEEN data_inizio_vesione AND coalesce(data_fine_verisione, now()::timestamp) 
+
+
+</select>
+
+<select id="getListaOrgNocByIdControlloFisico"  parameterType="java.lang.Long"  resultType="it.aizoon.ersaf.dto.generati.CarDOrgNocivo">
+select codice_eppo, 
+	   desc_estesa
+from car_d_org_nocivo cdon 
+inner join car_r_controllo_fisico_org_noc crcfon on crcfon.id_org_nocivo = cdon.id_org_nocivo 
+where crcfon.id_controllo_fisico = #{idControlloFisico,jdbcType=DECIMAL}
+
+
+
+</select>
+
+<select id="getAttivitaSementiByIdDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDMateriale">
+	select cdm.id_materiale,
+		   cdm.desc_estesa	
+	  from car_r_att_materiale_utente attMatUt
+	 inner join car_d_materiale cdm on cdm.id_materiale = attMatUt.id_materiale 
+	 where attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+       and attMatUt.id_tipo_attivita = 2
+</select>
+
+<select id="deleteRControlloMaterialeByIdControllo" parameterType="java.lang.Long">
+	delete from car_r_controllo_materiale
+	      where id_controllo = #{idControllo,jdbcType=DECIMAL}
+</select>
+
+<select id="getAttivitaSementiByIdControllo" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarDMateriale">
+	select cdm.id_materiale,
+		   cdm.desc_estesa	
+	  from car_r_controllo_materiale crcm
+	 inner join car_d_materiale cdm on cdm.id_materiale = crcm.id_materiale 
+	 where crcm.id_controllo = #{idControllo,jdbcType=DECIMAL}
+</select>
+
+<select id="getMaxIdDomandaByIdCentroAzPassaporto" parameterType="java.lang.Long" resultType="java.lang.Long">
+		select
+			max(domanda.id_domanda)
+		from car_t_domanda domanda	
+		where
+		 domanda.id_centro_aziendale_passaporto = #{idCentroAzPassaporto,jdbcType=DECIMAL}
+		 and domanda.id_stato_comunicazione in(2,3)
+		 and domanda.id_tipo_comunicazione != 4
+</select>
+
+</mapper>

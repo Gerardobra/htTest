@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+
+		
+	<!-- ALE 
+	<classPathEntry
+		location="C:\csi\wildfly-10.1.0.Final\modules\system\layers\base\org\postgresql\main\postgresql-42.1.1.jar" />-->
+   <!-- GERARDO/ALESSIO -->
+	  <classPathEntry
+		location="C:\wildfly-10.1.0.Final\modules\system\layers\base\org\postgresql\main\postgresql-42.1.1.jar" />
+	
+	<context id="PostgreSQL" defaultModelType="flat" targetRuntime="MyBatis3">
+		<property name="javaFileEncoding" value="utf8" />
+
+		<plugin
+			type="it.aizoon.ersaf.integration.mybatis.plugin.ForceNumericToLongPlugin" />
+		<plugin
+      type="it.aizoon.ersaf.integration.mybatis.plugin.ForceDecimalToDoublePlugin" />
+		<plugin
+			type="it.aizoon.ersaf.integration.mybatis.plugin.AddClassAnnotationsPlugin">
+			<property name="annotationClass" value="org.mybatis.cdi.Mapper" />
+			<property name="annotationString" value="@Mapper" />
+		</plugin>
+
+		<plugin
+			type="it.aizoon.ersaf.integration.mybatis.plugin.AddClassExtendPlugin">
+			<property name="extendedClass" value="it.aizoon.ersaf.dto.GenericExample" />
+		</plugin>
+		
+		<plugin type="org.mybatis.generator.plugins.CaseInsensitiveLikePlugin" />
+
+
+
+    
+	  
+	<!-- LOCAL ALE 
+	  <jdbcConnection 
+      connectionURL="jdbc:postgresql://localhost:5432/caronte"
+	  driverClass="org.postgresql.Driver" 
+	  userId="postgres" 
+	  password="mypass" />-->
+
+
+	<!-- LOCAL GERARDO
+     <jdbcConnection 
+      connectionURL="jdbc:postgresql://localhost:5432/caronte"
+	  driverClass="org.postgresql.Driver" 
+	  userId="postgres" 
+	  password="password" />--> 
+
+		
+	<!-- TEST -->
+    <jdbcConnection connectionURL="jdbc:postgresql://192.168.1.20:5432/caronte_dev"
+      driverClass="org.postgresql.Driver" userId="Caronte" password="F45%fEGS" />
+    
+      
+          
+    <javaTypeResolver type="it.aizoon.ersaf.integration.mybatis.extension.CaronteJavaTypeResolver" />
+    
+		<javaModelGenerator targetPackage="it.aizoon.ersaf.dto.generati"
+			targetProject="caronte-common/src/main/java">
+			<property name="rootClass" value="it.aizoon.ersaf.dto.BaseDto" />
+			<property name="trimStrings" value="true" />
+		</javaModelGenerator>
+
+		<sqlMapGenerator targetPackage="it.aizoon.ersaf.integration.mybatis.mapper.generati"
+			targetProject="caronte-integration\src\main\resources" />
+
+		<javaClientGenerator
+			targetPackage="it.aizoon.ersaf.integration.mybatis.mapper.generati"
+			targetProject="caronte-integration\src\main\java" type="XMLMAPPER">
+			<!-- interno al plugin dei mapper per aggiunta parametri <property name="rootInterface" 
+				value="it.aizoon.ersaf.integration.mybatis.mapper.generati.IBaseDao" /> -->
+		</javaClientGenerator>
+		
+		<!-- invertito l'ordine con qui vengono generati i mapper per evitare l'overwriting da parte della wildcard -->
+		
+		<!--  
+		<table schema="caronte" tableName="car_d%" />
+		<table schema="caronte" tableName="car_r_merce_richiesta"><generatedKey column="id_merce_richiesta" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_merce_tariffa"></table>
+		<table schema="caronte" tableName="car_r_trattamento_richiesta"><generatedKey column="id_trattamento_richiesta" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_certificato"><generatedKey column="id_certificato" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_ispettore"><generatedKey column="id_ispettore" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_pagamento"><generatedKey column="id_pagamento" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_richiesta"><generatedKey column="id_richiesta" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_notifica"><generatedKey column="id_notifica" sqlStatement="JDBC"/></table>		
+		<table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_genere"><generatedKey column="id_genere" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_lingua_genere"></table>
+		<table schema="caronte" tableName="car_d_lingua"><generatedKey column="id_lingua" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_autore_eppo"><generatedKey column="id_autore_eppo" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_nazione"><generatedKey column="id_nazione" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_specie"><generatedKey column="id_specie" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_allegato"><generatedKey column="id_allegato" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_lingua_specie"></table>
+		<table schema="caronte" tableName="car_r_ispet_certif_contr"><generatedKey column="id_ispet_certif_contr" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_spediz_assoc_sezione"></table>	
+				
+		<table schema="caronte" tableName="car_t_verbale_ispezione"><generatedKey column="id_verbale_ispezione" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_r_esito_tipo_controllo"></table>
+		<table schema="caronte" tableName="car_r_richiesta_tariffa"></table>
+		<table schema="caronte" tableName="car_t_upload_temp"></table>
+		<table schema="caronte" tableName="car_d_tipo_imballaggio"></table>
+		<table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>			
+		<table schema="caronte" tableName="car_r_campionamento_partita"></table>		
+		
+		
+		<table schema="caronte" tableName="car_t_comunicazione"><generatedKey column="id_comunicazione" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_comunicazione_specie"><generatedKey column="id_comunicazione_specie" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_sito_produzione"><generatedKey column="id_sito_produzione" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_r_gruppo_stato_com"></table>
+		<table schema="caronte" tableName="car_r_gruppo_stato_com_succ"></table>
+		
+		<table schema="caronte" tableName="car_r_comunicazione_specie"><generatedKey column="id_comunicazione_specie" sqlStatement="JDBC"/></table>>
+		
+		<table schema="caronte" tableName="car_t_invio_mail_utente"><generatedKey column="id_invio_mail_utente" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_tipo_com_gruppo"></table>
+		<table schema="caronte" tableName="car_r_tipo_com_sezione"></table>
+		<table schema="caronte" tableName="car_d_tipo_comunicazione"><generatedKey column="id_tipo_comunicazione" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_tipo_comunicazione"><generatedKey column="id_tipo_comunicazione" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_responsabile_passaporto"><generatedKey column="id_responsabile_passaporto" sqlStatement="JDBC"/></table>		
+		<table schema="caronte" tableName="car_d_tipologia"></table>
+		<table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_domanda_tipologia"></table>
+        <table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_d_tipo_flusso"></table>
+        <table schema="caronte" tableName="car_r_tipo_flusso_com"></table>
+        <table schema="caronte" tableName="car_t_flusso"><generatedKey column="id_flusso" sqlStatement="JDBC"/></table>        
+        <table schema="caronte" tableName="car_r_flusso_domanda"></table>        
+        
+        <table schema="caronte" tableName="car_d_tipo_attivita"><generatedKey column="id_tipo_attivita" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_materiale"><generatedKey column="id_materiale" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tabeName="car_r_tipo_attivita_materiale"><generatedKey column="id_tipo_attivita_materiale" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_r_flusso_comunicazione "></table>
+        
+        <table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_r_utente_spedizionieri"></table>
+        
+        <table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_t_sito_produzione"><generatedKey column="id_sito_produzione" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_d_tipo_modello"><generatedKey column="id_tipo_modello" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_tipologia_attivita"><generatedKey column="id_tipologia_attivita" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_voce"><generatedKey column="id_voce" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_r_voce_specie"><generatedKey column="id_voce_specie" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_r_tipologia_voce"><generatedKey column="id_tipolgia_voce" sqlStatement="JDBC"/></table>
+                        
+        <table schema="caronte" tableName="car_t_allegato_domanda"><generatedKey column="id_allegato_domanda" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_d_tipo_allegato"><generatedKey column="id_tipo_allegato" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_org_nocivo"><generatedKey column="id_org_nocivo" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_zona_protetta"><generatedKey column="id_zona_protetta" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_d_gruppo_zona_protetta"><generatedKey column="id_gruppo_zona_protetta" sqlStatement="JDBC"/></table> 
+        <table schema="caronte" tableName="car_t_zona_protetta_utente"><generatedKey column="id_zona_protetta_utente" sqlStatement="JDBC"/></table>        
+        
+        
+        <table schema="caronte" tableName="car_r_att_materiale_utente"><generatedKey column="id_att_materiale_utente" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_d_tipo_stampa"><generatedKey column="id_tipo_stampa" sqlStatement="JDBC"/></table>
+        
+
+        <table schema="caronte" tableName="car_r_tipo_dom_allegato"></table>    
+        
+        <table schema="caronte" tableName="car_t_dati_domanda"><generatedKey column="id_dati_domanda" sqlStatement="JDBC"/></table>        
+
+        <table schema="caronte" tableName="car_r_tipo_dom_allegato"></table>        
+        
+
+        <table schema="caronte" tableName="car_t_dati_domanda"><generatedKey column="id_dati_domanda" sqlStatement="JDBC"/></table>            
+        <table schema="caronte" tableName="car_t_dati_domanda"><generatedKey column="id_dati_domanda" sqlStatement="JDBC"/></table>           
+        <table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_r_lingua_genere"></table>
+        <table schema="caronte" tableName="car_r_voce_utente_specie"><generatedKey column="id_voce_utente_specie" sqlStatement="JDBC"/></table>
+        
+        <table schema="caronte" tableName="car_r_voce_utente_specie"><generatedKey column="id_voce_utente_specie" sqlStatement="JDBC"/></table>  
+      	<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_t_sito_produzione"><generatedKey column="id_sito_produzione" sqlStatement="JDBC"/></table>  
+        <table schema="caronte" tableName="car_r_comunicazione_specie"><generatedKey column="id_comunicazione_specie" sqlStatement="JDBC"/></table>       
+
+        <table schema="caronte" tableName="car_t_sito_produzione"><generatedKey column="id_sito_produzione" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_t_ispettore"><generatedKey column="id_ispettore" sqlStatement="JDBC"/></table>   
+		<table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+		
+	    <table schema="caronte" tableName="car_t_sito_produzione"><generatedKey column="id_sito_produzione" sqlStatement="JDBC"/></table>
+        <table schema="caronte" tableName="car_r_comunicazione_specie"><generatedKey column="id_comunicazione_specie" sqlStatement="JDBC"/></table> 
+        <table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>         
+		<table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_voce_utente"><generatedKey column="id_voce_utente" sqlStatement="JDBC"/></table> 
+		<table schema="caronte" tableName="car_r_att_materiale_utente"><generatedKey column="id_att_materiale_utente" sqlStatement="JDBC"/></table>
+
+		<table schema="caronte" tableName="car_d_tipo_modulo"><generatedKey column="id_tipo_modulo" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_tipo_com_modulo"></table>
+		<table schema="caronte" tableName="car_t_modulo"><generatedKey column="id_modulo" sqlStatement="JDBC"/></table>
+		
+		INIZIO TABELLE SEZIONE CONTROLLI
+		<table schema="caronte" tableName="car_t_controllo"><generatedKey column="id_controllo" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_norma_verbale"></table>
+		<table schema="caronte" tableName="car_r_controllo_norma_verbale"></table>
+		<table schema="caronte" tableName="car_d_tipologia_semente"></table>
+		<table schema="caronte" tableName="car_r_controllo_tipo_semente"></table>
+		<table schema="caronte" tableName="car_r_controllo_ispettore"></table>
+        <table schema="caronte" tableName="car_t_controllo_documentale"><generatedKey column="id_controllo_documentale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_norma_verbale"></table>
+		<table schema="caronte" tableName="car_d_tipologia_semente"></table>
+		
+		<table schema="caronte" tableName="car_t_controllo_identita"><generatedKey column="id_controllo_identita" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_STR_ATT"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_MOD_PRO"></table>
+		<table schema="caronte" tableName="CAR_D_METODO_PRODUZIONE"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_IRRIGA"></table>
+		<table schema="caronte" tableName="CAR_D_TIPO_IRRIGAZIONE"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_CON_PROF"></table>
+		<table schema="caronte" tableName="CAR_D_CONOSCENZA_PROFESSIONALE"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_REQ_PROF"></table>
+		<table schema="caronte" tableName="CAR_D_REQUISITO_PROFESSIONALE"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_SPECIE"></table>
+		
+		<table schema="caronte" tableName="car_r_campione_org_noc"></table>
+		<table schema="caronte" tableName="car_t_campione"><generatedKey column="id_campione" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_tipologia_campione"></table>
+		<table schema="caronte" tableName="car_t_controllo_fisico"><generatedKey column="id_controllo_fisico" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_struttura_attrezzatura"></table>
+		
+		<table schema="caronte" tableName="car_r_controllo_fisico_met_pro"></table>
+		<table schema="caronte" tableName="car_r_controllo_identita_sito"></table>
+		<table schema="caronte" tableName="car_t_esito"><generatedKey column="id_esito" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_tipologia_campione"></table>
+		<table schema="caronte" tableName="car_t_campione"><generatedKey column="id_campione" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_SPECIE"></table>		
+		<table schema="caronte" tableName="car_t_esito"><generatedKey column="id_esito" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_controllo"><generatedKey column="id_controllo" sqlStatement="JDBC"/></table>
+						
+		<table schema="caronte" tableName="car_d_tipologia_misura"></table>
+		
+		<table schema="caronte" tableName="car_t_misura_ufficiale"><generatedKey column="id_misura_ufficiale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_misura_ispettore"></table>
+		<table schema="caronte" tableName="car_r_misura_org_noc"></table>
+		<table schema="caronte" tableName="car_r_misura_tipologia"></table>
+		
+		<table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_tipologia_passaporto"></table>
+		<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_campione"><generatedKey column="id_campione" sqlStatement="JDBC"/></table> 
+		<table schema="caronte" tableName="car_t_domanda"><generatedKey column="id_domanda" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_r_controllo_tipologia"></table>
+		<table schema="caronte" tableName="car_t_misura_ufficiale"><generatedKey column="id_misura_ufficiale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_monit_cofinanziato"><generatedKey column="id_monit_cofinanziato" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_misura_ufficiale"><generatedKey column="id_misura_ufficiale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_spedizioniere"><generatedKey column="id_spedizioniere" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/>
+		<table schema="caronte" tableName="car_d_versione_controllo"></table>
+		<table schema="caronte" tableName="car_r_controllo_fisico_org_noc"></table>
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_SPECIE"></table>	
+		<table schema="caronte" tableName="CAR_R_CONTROLLO_FISICO_SPECIE"><generatedKey column="id_controllo_fisico_specie" sqlStatement="JDBC"/></table>	
+		<table schema="caronte" tableName="car_t_campione"><generatedKey column="id_campione" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_allegato"><generatedKey column="id_allegato" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_centro_aziendale"><generatedKey column="id_centro_aziendale" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_utente"><generatedKey column="id_utente" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_tipo_org_nocivo"><generatedKey column="id_tipo_org_nocivo" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_d_costante"></table>
+		<table schema="caronte" tableName="car_r_merce_richiesta"><generatedKey column="id_merce_richiesta" sqlStatement="JDBC"/></table>
+		
+		<table schema="caronte" tableName="car_r_utente_gruppo"></table>
+		
+		
+		<table schema="caronte" tableName="car_r_domanda_centro_az"></table>-->
+		
+		<table schema="caronte" tableName="car_t_iter_tariffa_sped"><generatedKey column="id_iter_tariffa_sped" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_iter_tipo_passaporto"><generatedKey column="id_iter_tipo_passaporto" sqlStatement="JDBC"/></table>
+		
+		
+		
+<table schema="caronte" tableName="car_t_iter_tariffa_sped"><generatedKey column="id_iter_tariffa_sped" sqlStatement="JDBC"/></table>
+		<table schema="caronte" tableName="car_t_iter_tipo_passaporto"><generatedKey column="id_iter_tipo_passaporto" sqlStatement="JDBC"/></table>
+        
+        
+
+		<!--table schema="caronte" tableName="test%" /-->
+	</context>
+</generatorConfiguration>

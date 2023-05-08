@@ -1,0 +1,1209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.DomandaMapper">
+  
+  <resultMap id="getAllegatiResultMap" type="it.aizoon.ersaf.dto.AllegatoDTO">
+		<id column="id_tipo_allegato" jdbcType="INTEGER" property="idTipoAllegato" />
+		<result column="desc_estesa" jdbcType="VARCHAR" property="descEstesa" />
+		<result column="fl_obbligatorio" jdbcType="BOOLEAN" property="flagObbligatorio" />
+		<result column="fl_multiplo" jdbcType="CHAR" property="flagMultiplo" />
+
+		<collection property="listaAllegati"
+			ofType="it.aizoon.ersaf.dto.generati.CarTAllegatoDomanda">
+			<id column="id_allegato_domanda" jdbcType="NUMERIC" property="idAllegatoDomanda" />			
+			<result column="desc_allegato" jdbcType="VARCHAR" property="descAllegato" />
+			<result column="nome_file" jdbcType="VARCHAR" property="nomeFile" />
+		</collection>
+	</resultMap>
+
+  <resultMap id="getTipologieAttMaterialeResultMap" type="it.aizoon.ersaf.dto.TipologiaAttMaterialeDTO">
+    <result column="id_att_materiale_utente" jdbcType="SMALLINT" property="idAttivitaMaterialeUtente" />
+    <result column="id_tipo_attivita" jdbcType="SMALLINT" property="idTipologia" />    
+    <result column="denomTipologia" jdbcType="VARCHAR" property="denomTipologia" />      
+    <result column="denomTipologiaEstesa" jdbcType="VARCHAR" property="denomTipologiaEstesa" /> 	
+    <result column="id_materiale" jdbcType="INTEGER" property="idMateriale" />
+    <result column="desc_breve" jdbcType="VARCHAR" property="descBreve" />      
+    <result column="desc_estesa" jdbcType="INTEGER" property="descEstesa" /> 
+    <result column="id_domanda" jdbcType="SMALLINT" property="idDomanda" />    
+    <result column="note" jdbcType="VARCHAR" property="note" />  
+    <result column="richiesta_passaporto" jdbcType="VARCHAR" property="richiestaPassaporto" />       
+  </resultMap>
+  
+ <resultMap id="getTipologieProdSpecieResultMap" type="it.aizoon.ersaf.dto.TipologiaProdSpecieDTO">   
+    <result column="id_voce_utente" jdbcType="SMALLINT" property="idTipologia" />
+    <result column="id_voce" jdbcType="SMALLINT" property="idVoce" />      
+    <result column="desc_breve" jdbcType="VARCHAR" property="denomTipologia" />
+    <result column="desc_estesa" jdbcType="VARCHAR" property="denomTipologiaEstesa" />  
+    <result column="note" jdbcType="VARCHAR" property="note" />        
+   <collection property="specieList" ofType="it.aizoon.ersaf.dto.GenereSpecieDTO">
+      <result column="id_genere" jdbcType="INTEGER" property="idGenere" />
+      <result column="denom_genere" jdbcType="VARCHAR" property="denomGenere" />      
+      <result column="id_specie" jdbcType="INTEGER" property="idSpecie" />
+      <result column="denom_specie" jdbcType="VARCHAR" property="denomSpecie" />           
+    </collection> 
+  </resultMap>
+  
+   <resultMap id="getZoneProtetteSpecieResultMap" type="it.aizoon.ersaf.dto.ZonaProtettaSpecieDTO">   
+    <result column="id_gruppo_zona_protetta" jdbcType="SMALLINT" property="idGruppoZonaProtetta" />
+    <result column="desc_breve" jdbcType="VARCHAR" property="denomZonaProtetta" />           
+   <collection property="specieList" ofType="it.aizoon.ersaf.dto.GenereSpecieDTO">
+      <result column="id_genere" jdbcType="INTEGER" property="idGenere" />
+      <result column="denom_genere" jdbcType="VARCHAR" property="denomGenere" />      
+      <result column="id_specie" jdbcType="INTEGER" property="idSpecie" />
+      <result column="denom_specie" jdbcType="VARCHAR" property="denomSpecie" />           
+    </collection> 
+  </resultMap>
+  
+  
+  <select id="getElencoDomande" parameterType="it.aizoon.ersaf.form.RicercaDomandaForm" resultType="it.aizoon.ersaf.dto.DomandaDto">
+      select	
+	 domanda.id_domanda, 
+     domanda.cod_domanda, 
+     tipoComunicaz.id_tipo_comunicazione,
+     tipoComunicaz.desc_breve desc_tipo_domanda,
+     utente.id_utente, 
+     utente.cognome utenteCognome,
+     utente.nome utenteNome,
+     spedizioniere.id_spedizioniere, 
+     coalesce (upper(spedizioniere.denom_spedizioniere), upper(spedizioniere.cognome ||' '|| spedizioniere.nome)) as denom_spedizioniere,
+     statoComunicaz.id_stato_comunicazione, 
+     statoComunicaz.desc_stato desc_stato_domanda,
+     domanda.numero_protocollo, 
+     domanda.data_protocollo, 
+     domanda.numero_centri_aziendali,      
+     domanda.id_utente_inserimento, 
+     domanda.data_inserimento, 
+     domanda.id_utente_aggiornamento, 
+     domanda.data_aggiornamento, 
+     domanda.motivazione,
+	 CASE WHEN comunicazione_successiva.id_domanda IS NULL then tipo_flusso_successivo.id_tipo_comunicazione ELSE NULL END as tipoDomSuccessiva,
+	 TIPO_COM_SUCCESSIVA.DESC_BREVE as descTipoDomSuccessiva,
+	 (
+	   SELECT MAX(stato.id_stato_comunicazione) 
+	    FROM car_R_UTENTE_GRUPPO utente
+			INNER JOIN car_D_GRUPPO gruppo ON utente.id_gruppo = gruppo.id_gruppo
+			INNER JOIN car_R_GRUPPO_STATO_COM stato ON gruppo.id_gruppo = stato.id_gruppo
+			INNER JOIN car_r_gruppo_stato_com_succ stato_succ ON stato.id_gruppo = stato_succ.id_gruppo AND stato_succ.id_stato_com_succ = 6
+			WHERE 
+		    utente.id_utente = #{idUtenteLoggato}
+			AND domanda.ID_STATO_COMUNICAZIONE = stato_succ.id_stato_comunicazione
+			AND gruppo.id_associazione_sezione = #{idAssociazioneSezione,jdbcType=DECIMAL}
+		AND STATO.id_stato_comunicazione = TIPO_FLUSSO_SUCCESSIVO.ID_STATO_COMUNICAZIONE) as statoDomSuccessiva,
+	  (
+	    SELECT 'S'
+			FROM car_R_UTENTE_GRUPPO utente
+			INNER JOIN car_D_GRUPPO gruppo
+			USING (id_gruppo)
+			INNER JOIN car_R_GRUPPO_STATO stato
+			USING (id_gruppo)
+			WHERE utente.id_utente = #{idUtenteLoggato}
+			AND gruppo.id_associazione_sezione = tipoComSez.id_associazione_sezione
+			AND STATO.ID_STATO = domanda.ID_STATO_COMUNICAZIONE
+			) as flagModDomanda,
+	   (SELECT COUNT(id_domanda) FROM car_R_FLUSSO_DOMANDA
+	    WHERE id_flusso = flusso.id_flusso) AS numDomandeFlusso,
+	    (SELECT MAX(id_domanda) FROM car_R_FLUSSO_DOMANDA
+	    WHERE id_flusso = flusso.id_flusso) AS maxIdDomandaFlusso,
+	    tipoComunicaz.id_tipo_stampa
+      FROM
+		car_t_domanda domanda
+		INNER JOIN car_D_TIPO_COMUNICAZIONE tipoComunicaz on domanda.ID_TIPO_COMUNICAZIONE = tipoComunicaz.ID_TIPO_COMUNICAZIONE
+		INNER JOIN car_D_STATO_COMUNICAZIONE statoComunicaz on domanda.ID_STATO_COMUNICAZIONE = statoComunicaz.ID_STATO_COMUNICAZIONE
+		INNER JOIN car_R_TIPO_COM_SEZIONE tipoComSez on tipoComSez.ID_TIPO_COMUNICAZIONE = tipoComunicaz.ID_TIPO_COMUNICAZIONE
+		LEFT OUTER JOIN CAR_R_FLUSSO_DOMANDA flussoComunicaz on domanda.id_domanda = flussoComunicaz.id_domanda
+		LEFT OUTER JOIN CAR_T_FLUSSO flusso on flussoComunicaz.id_flusso = flusso.id_flusso
+		LEFT OUTER JOIN CAR_R_TIPO_FLUSSO_COM tipoFlussoCom on tipoFlussoCom.id_tipo_flusso = flusso.id_tipo_flusso AND tipoFlussoCom.id_tipo_comunicazione = domanda.id_tipo_comunicazione
+		LEFT OUTER JOIN CAR_R_TIPO_FLUSSO_COM tipo_flusso_successivo ON tipoFlussoCom.id_tipo_flusso = tipo_flusso_successivo.id_tipo_flusso AND tipo_flusso_successivo.ordinamento = tipoFlussoCom.ordinamento + 1
+		LEFT OUTER JOIN CAR_D_TIPO_COMUNICAZIONE tipo_com_successiva ON tipo_flusso_successivo.id_tipo_comunicazione = tipo_com_successiva.id_tipo_comunicazione
+		LEFT OUTER JOIN CAR_R_FLUSSO_DOMANDA comunicazione_successiva ON comunicazione_successiva.id_flusso = flusso.id_flusso and comunicazione_successiva.progressivo = flussoComunicaz.progressivo + 1
+		INNER JOIN car_t_utente utente ON domanda.id_utente  = utente.id_utente 
+		LEFT OUTER JOIN car_t_spedizioniere spedizioniere ON domanda.id_spedizioniere = spedizioniere.id_spedizioniere	  		
+	WHERE
+	    tipoComunicaz.ABILITATO = true
+		AND tipoComunicaz.FINE_VALIDITA is null
+		AND statoComunicaz.FINE_VALIDITA IS NULL
+		AND tipoComSez.FINE_VALIDITA IS NULL
+		AND tipoComSez.ID_ASSOCIAZIONE_SEZIONE = #{idAssociazioneSezione,jdbcType=DECIMAL}
+	  <if test="nomeOperatore != null">
+	    <bind name="nomeOperatore" value="'%' + nomeOperatore + '%'" />
+		AND UPPER(utente.nome) like UPPER(#{nomeOperatore})
+	  </if>
+	  <if test="cognomeOperatore != null">
+	    <bind name="cognomeOperatore" value="'%' + cognomeOperatore + '%'" />
+		AND UPPER(utente.cognome) like UPPER(#{cognomeOperatore})
+	  </if>
+	  <if test="azienda != null">
+        <bind name="azienda" value="'%' + azienda + '%'" />
+         AND UPPER(spedizioniere.denom_spedizioniere) like UPPER(#{azienda})
+      </if>
+      <if test="idTipoComunicazione != null">
+         AND domanda.id_tipo_comunicazione = #{idTipoComunicazione}
+      </if>
+      <if test="idStatoComunicazione != null">
+         AND domanda.id_stato_comunicazione = #{idStatoComunicazione}
+      </if>
+      <if test="dataCreazione != null">
+         AND TO_DATE(TO_CHAR(domanda.data_inserimento, 'YYYY-MM-DD'), 'YYYY-MM-DD') = TO_DATE(#{dataCreazione}, 'YYYY-MM-DD')
+      </if>
+      <if test="codiceDomanda != null">
+        AND domanda.cod_domanda = #{codiceDomanda}
+      </if>  
+      <choose>    
+		  <when test="idUtenteInsert != null">
+					AND (EXISTS (
+					SELECT 'X'
+					FROM car_r_flusso_domanda flusso_inner
+					INNER JOIN CAR_T_DOMANDA domanda_inner ON flusso_inner.id_domanda = domanda_inner.id_domanda
+					WHERE flusso_inner.ID_FLUSSO = flusso.ID_FLUSSO
+					AND domanda_inner.ID_UTENTE_INSERIMENTO = #{idUtenteInsert}
+					)
+					and domanda.ID_UTENTE_INSERIMENTO = #{idUtenteInsert} 
+					)				
+		  </when>
+		  <otherwise>
+					AND EXISTS (
+					SELECT 'X'
+					FROM CAR_R_UTENTE_GRUPPO GRUPPO
+					INNER JOIN car_r_gruppo_stato_com STATO
+					USING (ID_GRUPPO)
+					WHERE GRUPPO.ID_UTENTE = #{idUtenteLoggato}
+					AND STATO.id_stato_comunicazione = statoComunicaz.ID_STATO_COMUNICAZIONE
+					)
+		  </otherwise>
+	  </choose>	
+		ORDER BY domanda.data_protocollo DESC NULLS LAST , domanda.id_domanda DESC
+		LIMIT 500
+  </select>
+  
+  <select id="getTipiDomandeByIdUtente" resultType="it.aizoon.ersaf.dto.generati.CarDTipoComunicazione">   
+    SELECT    
+         tipoCom.ID_TIPO_COMUNICAZIONE, 
+         tipoCom.DESC_BREVE, 
+         tipoCom.DESC_ESTESA, 
+         tipoCom.ISTRUZIONI, 
+         tipoCom.ABILITATO, 
+         tipoCom.QUALITA_DI, 
+         tipoCom.INIZIO_VALIDITA, 
+         tipoCom.FINE_VALIDITA
+    FROM CAR_D_TIPO_COMUNICAZIONE tipoCom      
+       INNER JOIN CAR_R_TIPO_COM_GRUPPO tipoComGruppo ON tipoCom.ID_TIPO_COMUNICAZIONE = tipoComGruppo.ID_TIPO_COMUNICAZIONE
+       INNER JOIN CAR_R_UTENTE_GRUPPO utenteGruppo ON tipoComGruppo.ID_GRUPPO = utenteGruppo.ID_GRUPPO 
+       INNER JOIN CAR_R_TIPO_COM_SEZIONE tipoComSez ON tipoCom.ID_TIPO_COMUNICAZIONE = tipoComSez.ID_TIPO_COMUNICAZIONE
+    WHERE tipoCom.FINE_VALIDITA is null
+         AND tipoComGruppo.FINE_VALIDITA is null
+         AND tipoComSez.FINE_VALIDITA is null   
+         AND utenteGruppo.ID_UTENTE = #{idUtente,jdbcType=DECIMAL}
+         AND abilitato = true
+         AND tipoComSez.ID_ASSOCIAZIONE_SEZIONE = #{idAssociazioneSezione,jdbcType=DECIMAL}    
+    ORDER BY tipoCom.ID_TIPO_COMUNICAZIONE 
+  </select>
+  
+  <select id="getElencoDomandeStato" parameterType="map" resultType="it.aizoon.ersaf.dto.DomandaDto">
+    SELECT 
+       domanda.id_domanda,
+       domanda.id_tipo_comunicazione,
+       tipo.desc_breve descTipoDomanda,
+       domanda.id_stato_comunicazione,
+       stato.desc_stato descStatoDomanda,
+       domanda.id_utente_inserimento,
+       domanda.data_inserimento,
+       domanda.id_utente_aggiornamento,
+       domanda.data_aggiornamento,
+       upper(domanda.motivazione) as motivazione
+    FROM car_t_domanda domanda
+      INNER JOIN car_d_tipo_comunicazione tipo  ON domanda.id_tipo_comunicazione = tipo.id_tipo_comunicazione
+      INNER JOIN car_d_stato_comunicazione stato ON domanda.id_stato_comunicazione = stato.id_stato_comunicazione
+    WHERE     
+     domanda.data_aggiornamento > #{dataLimite}
+     AND domanda.id_stato_comunicazione IN 
+     <foreach item="item" index="index" collection="listaStati" open="(" separator="," close=")">
+        #{item}
+     </foreach>
+     <if test="idUtente != null">
+       AND domanda.id_utente_inserimento = #{idUtente}       
+     </if> 
+    ORDER BY DATA_INSERIMENTO DESC NULLS LAST
+  </select>
+  
+   <select id="getMaxProgressivoFlussoDomanda"  parameterType="java.lang.Long" resultType="java.lang.Long">
+         select
+           max(progressivo)
+		 from 
+		   CAR_R_FLUSSO_DOMANDA
+		 where 
+		   id_flusso = #{idFlusso,jdbcType=DECIMAL} 
+   </select>
+   
+   <select id="getAziendeByIdUtente" resultType="it.aizoon.ersaf.dto.generati.CarTSpedizioniere">   
+    select 
+	  spediz.id_spedizioniere,
+	  COALESCE(UPPER(spediz.denom_spedizioniere), UPPER(spediz.cognome|| ' ' ||spediz.nome), UPPER(utente.cognome || ' ' || utente.nome)) as denom_spedizioniere 
+	from 
+	  car_t_utente utente
+	  inner join car_t_spedizioniere spediz on spediz.id_spedizioniere = utente.id_spedizioniere 
+	where  
+	  utente.id_utente = #{idUtente,jdbcType=DECIMAL} 
+	  and id_stato_azienda != ${@it.aizoon.ersaf.util.CaronteConstants@ID_STATO_AZIENDA_CANCELLATA}
+	 union
+	 select 
+	  spedizioniere.id_spedizioniere,
+	  COALESCE(UPPER(spedizioniere.denom_spedizioniere), UPPER(spedizioniere.cognome|| ' ' ||spedizioniere.nome), UPPER(utente.cognome || ' ' || utente.nome)) as denom_spedizioniere 
+	from 
+	  car_t_utente utente
+	  inner join car_r_utente_spedizionieri spedizionieri on spedizionieri.id_utente = utente.id_utente 
+	  inner join car_t_spedizioniere spedizioniere on spedizioniere.id_spedizioniere = spedizionieri.id_spedizioniere
+	where  
+	  utente.id_utente = #{idUtente,jdbcType=DECIMAL}
+	  and spedizionieri.fine_validita is null 
+	  and id_stato_azienda != ${@it.aizoon.ersaf.util.CaronteConstants@ID_STATO_AZIENDA_CANCELLATA}
+  </select>
+  
+  <select id="getSpedizioniereByIdSpedizIdUtente" resultType="it.aizoon.ersaf.dto.generati.CarTSpedizioniere">
+    select 
+	   spediz.id_spedizioniere,
+	   spediz.denom_spedizioniere, 
+	   spediz.cuaa, 
+	   spediz.codice_ruop as codiceRuop
+	 from car_t_utente utente
+	  inner join car_t_spedizioniere spediz on spediz.id_spedizioniere = utente.id_spedizioniere  
+	 where
+	  utente.id_spedizioniere = #{idAzienda,jdbcType=DECIMAL}
+	  and utente.id_utente = #{idUtente,jdbcType=DECIMAL} 
+	 union     
+	  select
+	    spediz.id_spedizioniere, 
+	    spediz.denom_spedizioniere
+	  from car_r_utente_spedizionieri utenteSpediz
+	  inner join car_t_spedizioniere spediz on spediz.id_spedizioniere = utenteSpediz.id_spedizioniere 
+	  where 
+	    utenteSpediz.id_spedizioniere = #{idAzienda,jdbcType=DECIMAL}
+	    and utenteSpediz.id_utente = #{idUtente,jdbcType=DECIMAL}
+  </select>
+   
+   <select id="lockDomanda" resultType="java.lang.Long" parameterType="java.lang.Long">
+    SELECT id_stato_comunicazione
+    FROM car_t_domanda
+    WHERE id_domanda = #{idDomanda,jdbcType=DECIMAL}
+    FOR UPDATE
+  </select>
+  
+  <select id="getSiglaProvByIdProvincia" resultType="java.lang.String" parameterType="java.lang.Long">
+    select upper(sigla_provincia) as sigla_provincia
+	from car_d_provincia
+	where id_provincia = #{idProvincia,jdbcType=DECIMAL}
+  </select>
+  
+   <select id="getCodiceCentroAzByIdProvIdSpediz" resultType="java.lang.String">
+	SELECT provincia.sigla_provincia||
+        CASE WHEN (SELECT count(centroAz.id_centro_aziendale)
+                    from car_t_centro_aziendale centroAz
+                    inner join car_d_comune comune on comune.id_comune = centroAz.id_comune 
+                    where centroAz.id_spedizioniere  = #{idSpedizioniere,jdbcType=DECIMAL}
+                    and comune.id_provincia = #{idProvincia,jdbcType=DECIMAL} ) > 0 
+            THEN (SELECT TRIM(to_char(count(centroAz.id_centro_aziendale)+1,'000')) as codiceCentroAziendale
+                    from car_t_centro_aziendale centroAz
+                    inner join car_d_comune comune on comune.id_comune = centroAz.id_comune
+                    where centroAz.id_spedizioniere  = #{idSpedizioniere,jdbcType=DECIMAL}
+                    and comune.id_provincia = #{idProvincia,jdbcType=DECIMAL} ) 
+            ELSE '001'
+	END AS codicecentroaziendale
+	from car_d_provincia provincia
+  	WHERE id_provincia = #{idProvincia,jdbcType=DECIMAL}	
+   </select>
+   
+  
+  <select id="isUtenteAbilitatoModificaDomanda" resultType="java.lang.Boolean">
+   SELECT bool_or(CASE 
+      WHEN utente_gruppo.id_utente = domanda.id_utente_inserimento 
+        AND domanda.id_stato_comunicazione IN (1, 4) 
+        THEN true 
+      ELSE gruppo_stato.richiesta_modificabile END)
+    FROM car_t_domanda domanda
+      INNER JOIN car_r_gruppo_stato_com gruppo_stato
+        ON domanda.id_stato_comunicazione = gruppo_stato.id_stato_comunicazione
+      INNER JOIN car_r_utente_gruppo utente_gruppo
+        USING (id_gruppo)
+    WHERE utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT}
+    AND domanda.id_domanda =  #{idDomanda,jdbcType=BIGINT}
+   </select>
+   
+   
+   <select id="getCentriAziendaliByIdDomanda" resultType="it.aizoon.ersaf.dto.CentroAziendaleDomandaDTO">
+     select    
+      centroAz.id_centro_aziendale,
+      upper(centroAz.cod_centro_aziendale) as cod_centro_aziendale,
+      upper(centroAz.denominazione) as denominazione,
+      upper(comune.denom_comune) as denom_comune,
+      prov.sigla_provincia,
+      centroAz.cap,
+      upper(centroAz.indirizzo) as indirizzo,
+      upper(centroAz.frazione) as frazione,
+      centroAz.telefono,
+      centroAz.cellulare,
+      upper(centroAz.email) as email,
+      upper(centroAz.pec) as pec 
+    from car_r_domanda_centro_az domandaCa
+    inner join car_t_centro_aziendale centroAz
+     on centroAz.id_centro_aziendale  = domandaCa.id_centro_aziendale
+    left outer join car_d_comune comune 
+     on centroAz.id_comune = comune.id_comune 
+    left outer join car_d_provincia prov
+      on comune.id_provincia  = prov.id_provincia 
+    where 
+      domandaCa.id_domanda = #{idDomanda,jdbcType=BIGINT}
+      and centroAz.id_stato_azienda != ${@it.aizoon.ersaf.util.CaronteConstants@ID_STATO_AZIENDA_CANCELLATA}
+    order by centroAz.cod_centro_aziendale
+   </select>
+   
+    <select id="getTipologieProdCentroAz" resultMap="getTipologieProdSpecieResultMap">
+select 
+          voceUt.id_voce_utente,
+		  voceUt.id_voce,
+		  voce.desc_breve,
+		  upper(voceUt.note) as note,
+		  utSpecie.id_specie,
+		  lingua_specie.denom_specie,
+		  utSpecie.id_genere,
+		  lingua_genere.denom_genere
+		from 
+		  car_t_voce_utente voceUt
+		  inner join car_d_voce voce
+		    on voce.id_voce  = voceUt.id_voce 
+		  left outer join car_r_voce_utente_specie utSpecie
+		    on utSpecie.id_voce_utente = voceUt.id_voce_utente 
+		  left outer join car_d_specie specie
+		    on specie.id_specie = utSpecie.id_specie 
+		  LEFT OUTER JOIN (
+		        SELECT lingua_specie_inner.id_specie,
+		               lingua_specie_inner.denom_specie
+		        FROM car_r_lingua_specie lingua_specie_inner
+		          INNER JOIN car_d_lingua lingua
+		            ON lingua_specie_inner.id_lingua = lingua.id_lingua
+		            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+		      ) lingua_specie 
+		   ON specie.id_specie = lingua_specie.id_specie
+		   LEFT OUTER JOIN (
+		        SELECT lingua_genere_inner.id_genere,
+		               lingua_genere_inner.denom_genere
+		        FROM car_r_lingua_genere lingua_genere_inner
+		          INNER JOIN car_d_lingua lingua
+		            ON lingua_genere_inner.id_lingua = lingua.id_lingua
+		            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+		      ) lingua_genere 
+		        ON utSpecie.id_genere = lingua_genere.id_genere
+		where 
+		  voceUt.id_centro_aziendale = #{idCentroAziendale,jdbcType=BIGINT}	
+		  and voceUt.id_domanda = #{idDomanda,jdbcType=BIGINT}	  
+		 order by  voce.desc_breve, utSpecie.id_genere, specie.id_specie   
+   </select>
+  
+  <select id="getSitiProduzioneCentroAz" resultType="it.aizoon.ersaf.dto.SitoProduzioneDTO">
+    select
+	   sitoProd.id_sito_produzione,
+	   sitoProd.denominazione,
+	   sitoProd.ubicazione,
+	   sitoProd.id_comune,
+	   comune.denom_comune, 
+	   prov.id_provincia, 
+	   prov.sigla_provincia,
+	   sitoProd.foglio,
+	   sitoProd.mappale,
+	   sitoProd.superficie 
+	 from 
+	  car_t_sito_produzione sitoProd
+	  left outer join car_d_comune comune
+	    on comune.id_comune = sitoProd.id_comune 
+	  left outer join car_d_provincia prov
+	    on comune.id_provincia = prov.id_provincia 
+	 where
+	   sitoProd.id_centro_aziendale = #{idCentroAziendale,jdbcType=BIGINT}
+	 order by
+       comune.denom_comune, sitoProd.denominazione  
+  </select>
+  
+  <select id="getTipologieProdByIdDomanda" parameterType="map" resultMap="getTipologieProdSpecieResultMap">
+     select voceUt.id_voce_utente,
+		  voceUt.id_voce,
+		  voce.desc_estesa,
+		  upper(voceUt.note) as note,
+		  utSpecie.id_specie,
+		  lingua_specie.denom_specie,
+		  utSpecie.id_genere,
+		  lingua_genere.denom_genere
+       from car_t_voce_utente voceUt 
+       inner join car_D_voce voce on voce.id_voce = voceUt.id_voce 
+       left join car_r_voce_utente_specie utSpecie on utSpecie.id_voce_utente = voceUt.id_voce_utente 
+       LEFT OUTER JOIN (
+		        SELECT lingua_specie_inner.id_specie,
+		               lingua_specie_inner.denom_specie
+		        FROM car_r_lingua_specie lingua_specie_inner
+		          INNER JOIN car_d_lingua lingua
+		            ON lingua_specie_inner.id_lingua = lingua.id_lingua
+		            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+		      ) lingua_specie 
+		   ON utSpecie.id_specie = lingua_specie.id_specie       
+	  LEFT OUTER JOIN (
+		        SELECT lingua_genere_inner.id_genere,
+		               lingua_genere_inner.denom_genere
+		        FROM car_r_lingua_genere lingua_genere_inner
+		          INNER JOIN car_d_lingua lingua
+		            ON lingua_genere_inner.id_lingua = lingua.id_lingua
+		            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+		      ) lingua_genere 
+		        ON utSpecie.id_genere = lingua_genere.id_genere
+       where voceUt.id_domanda = #{idDomanda}
+       and voce.id_tipo_modello = #{idTipoModello}	   
+	   and voce.gruppo = #{gruppo}
+	   order by  voce.desc_breve, utSpecie.id_genere, utSpecie.id_specie 
+   </select>
+   
+ 	<select id="getZoneProtetteSpecieByIdDomanda" parameterType="java.lang.Long" resultMap="getZoneProtetteSpecieResultMap">
+	  SELECT zpUtente.id_gruppo_zona_protetta,
+			   		gruppoZP.desc_breve, 
+					specie.id_genere,
+					lingua_genere.denom_genere,
+					zpUtente.id_specie,
+					lingua_specie.denom_specie
+			   FROM car_t_zona_protetta_utente zpUtente
+	     INNER JOIN car_d_gruppo_zona_protetta gruppoZP ON gruppoZP.id_gruppo_zona_protetta = zpUtente.id_gruppo_zona_protetta 
+	     INNER JOIN car_d_specie specie  ON specie.id_specie = zpUtente.id_specie 
+	     LEFT OUTER JOIN (
+			        SELECT lingua_specie_inner.id_specie,
+			               lingua_specie_inner.denom_specie
+			        FROM car_r_lingua_specie lingua_specie_inner
+			          INNER JOIN car_d_lingua lingua
+			            ON lingua_specie_inner.id_lingua = lingua.id_lingua
+			            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+			      ) lingua_specie 
+			   ON specie.id_specie = lingua_specie.id_specie
+		 LEFT OUTER JOIN (
+			        SELECT lingua_genere_inner.id_genere,
+			               lingua_genere_inner.denom_genere
+			        FROM car_r_lingua_genere lingua_genere_inner
+			          INNER JOIN car_d_lingua lingua
+			            ON lingua_genere_inner.id_lingua = lingua.id_lingua
+			            AND UPPER (lingua.cod_lingua) = UPPER ('la')
+			      ) lingua_genere 
+			        ON specie.id_genere = lingua_genere.id_genere
+			WHERE zpUtente.id_domanda = #{idDomanda}
+	     ORDER BY gruppoZP.desc_breve, specie.id_genere, specie.id_specie  
+   </select>
+   
+   <select id="getTipologieAttMateriale" parameterType="java.lang.Long" resultMap="getTipologieAttMaterialeResultMap">
+     select 
+       attMatUt.id_att_materiale_utente,
+       attMatUt.id_tipo_attivita,
+       tipoAtt.desc_breve as denomTipologia,
+       tipoAtt.desc_estesa as denomTipologiaEstesa,
+       attMatUt.id_materiale,
+       mat.desc_breve,
+       mat.desc_estesa,
+       attMatUt.note,
+       attMatUt.id_domanda,
+       attMatUt.richiesta_passaporto 
+     from 
+       car_r_att_materiale_utente attMatUt
+       inner join car_d_tipo_attivita tipoAtt on attMatUt.id_tipo_attivita = tipoAtt.id_tipo_attivita
+       left outer join car_d_materiale mat on attMatUt.id_materiale = mat.id_materiale 
+     where 
+       attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+   </select>
+   
+   <delete id="eliminaVoceUtente">
+     delete from car_t_voce_utente voceUt
+		 where id_voce in(
+			select			
+				voce.id_voce	
+			from
+				car_d_voce voce
+			where
+				( voce.id_tipo_modello = #{idTipoModello}
+				and voce.gruppo = #{gruppo} )
+			)
+		    and voceUt.id_domanda = #{idDomanda}
+   </delete>
+   
+   <select id="getListaAllegatiDomanda" parameterType="java.lang.Long" resultMap="getAllegatiResultMap">
+		SELECT 
+			tipoAllegato.id_tipo_allegato,
+			tipoAllegato.desc_estesa,
+			tipoDomAllegato.fl_obbligatorio,
+			tipoAllegato.fl_multiplo,
+			allegato.id_allegato_domanda,
+			allegato.desc_allegato,
+			allegato.nome_file
+		FROM 
+			car_t_domanda domanda
+			INNER JOIN car_r_tipo_dom_allegato tipoDomAllegato
+			ON domanda.id_tipo_comunicazione = tipoDomAllegato.id_tipo_comunicazione
+			AND tipoDomAllegato.fine_validita IS NULL
+			INNER JOIN car_d_tipo_allegato tipoAllegato
+			ON tipoDomAllegato.id_tipo_allegato = tipoAllegato.id_tipo_allegato
+			AND tipoAllegato.fine_validita IS NULL
+			LEFT OUTER JOIN car_t_allegato_domanda allegato
+			ON domanda.id_domanda = allegato.id_domanda
+			AND tipoAllegato.id_tipo_allegato = allegato.id_tipo_allegato
+		WHERE 
+			domanda.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+			order by tipoDomAllegato.ordinamento, allegato.id_allegato_domanda 
+	</select>
+   
+   
+   <select id="getDettaglioAnagraficaByIdDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.DomandaDto">
+     select  
+        dom.id_domanda, 
+        dom.cod_domanda,
+        id_associazione_sezione,       		
+		tipoCom.id_tipo_comunicazione as idTipoComunicazione,
+		tipoCom.desc_estesa as descTipoDomanda,
+		statoComunicaz.id_stato_comunicazione,
+		statoComunicaz.desc_stato as descStatoDomanda,				
+		utente.id_utente,
+		utente.cognome,
+		utente.nome,
+		utente.codice_fiscale,
+		utente.data_nascita,				
+		utente.cap,
+		utente.indirizzo,
+		utente.telefono,
+		utente.cellulare,
+		utente.email,
+		comuneNascita.id_comune as idComuneNascita,
+		comuneNascita.denom_comune as comuneNascita,
+		provNascita.id_provincia as idProvNascita,
+		provNascita.denom_provincia as provNascita,
+		comuneRes.id_comune as idComuneResidenza,
+		comuneRes.denom_comune as comuneResidenza,		
+		provRes.id_provincia as idProvResidenza,
+		provRes.denom_provincia as provResidenza,		
+		utente.denom_comune_est_nascita,
+		utente.denom_comune_est_resid,
+		dom.data_inserimento as dataInserimento,
+		flusso.id_tipo_flusso,
+		flusso.id_flusso,
+		tipoComSuccessiva.desc_breve as descTipoComSuccessiva,
+		utente.id_nazione_est_nascita,	
+		nazioneNascita.denom_nazione as nazioneEstNascita,
+		utente.id_nazione_est_resid,
+		nazioneResid.denom_nazione as nazioneEstResid,
+		cts.codice_ruop as codiceRuop,
+		cts.cuaa as cuaa
+		from 
+			car_t_domanda dom
+			join car_d_tipo_comunicazione tipoCom on dom.id_tipo_comunicazione = tipoCom.id_tipo_comunicazione
+			join car_d_stato_comunicazione statoComunicaz on dom.id_stato_comunicazione = statoComunicaz.id_stato_comunicazione
+			join car_t_utente utente on utente.id_utente = dom.id_utente
+			left join car_d_comune comuneNascita on comuneNascita.id_comune = utente.id_comune_nascita
+			left join car_d_provincia provNascita on provNascita.id_provincia = comuneNascita.id_provincia
+			left join car_d_comune comuneRes on comuneRes.id_comune = utente.id_comune_residenza
+			left join car_d_provincia provRes on provRes.id_provincia = comuneRes.id_provincia
+			left join car_r_tipo_com_sezione tipoComSezione on tipoComSezione.id_tipo_comunicazione = tipoCom.id_tipo_comunicazione
+			left outer join car_r_flusso_domanda flussoDom on dom.id_domanda = flussoDom.id_domanda
+			left outer join car_t_flusso flusso ON flussoDom.id_flusso = flusso.id_flusso
+			left outer join car_r_tipo_flusso_com tipoFlussoCom on tipoFlussoCom.id_tipo_flusso = flusso.id_tipo_flusso AND tipoFlussoCom.id_tipo_comunicazione = dom.id_tipo_comunicazione
+			left outer join car_r_tipo_flusso_com tipoFlussoSuccessivo ON tipoFlussoCom.id_tipo_flusso = tipoFlussoSuccessivo.id_tipo_flusso AND tipoFlussoSuccessivo.ordinamento = tipoFlussoCom.ordinamento + 1
+			left outer join car_d_tipo_comunicazione tipoComSuccessiva ON tipoFlussoSuccessivo.id_tipo_comunicazione = tipoComSuccessiva.id_tipo_comunicazione	
+			left outer join car_d_nazione nazioneNascita ON nazioneNascita.id_nazione = utente.id_nazione_est_nascita	
+			left outer join car_d_nazione nazioneResid ON nazioneResid.id_nazione = utente.id_nazione_est_resid	
+			left outer join car_t_spedizioniere cts ON cts.id_spedizioniere = dom.id_spedizioniere
+		where 
+			dom.id_domanda = #{idDomanda}
+	</select>	
+	
+	<select id="getDettTipologiaDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarRDomandaTipologia">
+		select
+		  domandaTip.id_domanda, 
+		  domandaTip.id_tipologia 
+		from 
+		  car_r_domanda_tipologia domandaTip
+		where 
+		  domandaTip.id_domanda = #{idDomanda}
+	</select>
+         
+   <select id="getListaStatiDomandaSuccessivi" resultType="it.aizoon.ersaf.dto.generati.CarDStatoComunicazione">
+	    select
+			distinct stato.id_stato_comunicazione,
+			stato.desc_stato
+		from
+			car_t_domanda as domanda
+		inner join car_r_gruppo_stato_com_succ gruppo_stato on
+			domanda.id_stato_comunicazione = gruppo_stato.id_stato_comunicazione
+		inner join car_r_utente_gruppo utente_gruppo
+				using (id_gruppo)
+		inner join car_d_stato_comunicazione stato on
+			gruppo_stato.id_stato_com_succ = stato.id_stato_comunicazione
+		where
+			domanda.id_domanda = #{idDomanda,jdbcType=BIGINT}
+			and ((domanda.id_utente_inserimento = #{idUtente,jdbcType=BIGINT}
+			and id_gruppo in (14))
+			or utente_gruppo.id_utente = #{idUtente,jdbcType=BIGINT}
+			)
+		order by
+			id_stato_comunicazione
+  </select>
+  
+  <select id="checkAllegatiByIdDomanda" resultType="java.lang.String">
+    SELECT CASE WHEN allegatiMancanti.num_allegati_mancanti = 0 THEN 'S' ELSE 'N' END
+		FROM (
+			select
+				COUNT ('x') num_allegati_mancanti
+			from
+				car_t_domanda domanda
+				INNER JOIN car_r_tipo_dom_allegato domandaAllegato ON domanda.id_tipo_comunicazione = domandaAllegato.id_tipo_comunicazione
+			where
+			    domanda.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+				AND domandaAllegato.fl_obbligatorio = true
+				AND domandaAllegato.fine_validita IS NULL
+				AND NOT EXISTS (
+					SELECT 'x'
+					FROM 
+					  car_t_allegato_domanda
+					WHERE 
+						id_domanda = domanda.id_domanda
+						AND id_tipo_allegato = domandaAllegato.id_tipo_allegato
+				)
+          ) as allegatiMancanti
+  </select>
+  
+  
+  <select id="getDettaglioAziendaByIdDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.DomandaDto">
+    select 
+	  domanda.id_spedizioniere,
+	  sped.id_tipo_spedizioniere,
+	  tipoSped.denom_tipo_spedizioniere, 
+	  sped.cuaa,
+	  sped.denom_spedizioniere, 
+	  sped.nome as nomeSped,
+	  sped.cognome as cognomeSped,
+	  sped.telefono as telefonoSped,
+	  sped.cellulare as cellSped,
+	  sped.fax as faxSped,
+	  sped.cap as capSped,
+	  sped.indirizzo as indirizzoSped,
+	  sped.id_comune as idComuneSped,
+	  comune.denom_comune as denomComuneSped,
+	  sped.email as emailSped,
+	  sped.pec as pecSped,
+	  sped.partita_iva,
+	  sped.tipo_spedizioniere_altro
+	from 
+	  car_t_domanda domanda
+	inner join car_t_spedizioniere sped on domanda.id_spedizioniere = sped.id_spedizioniere 
+	inner join car_d_tipo_spedizioniere tipoSped on sped.id_tipo_spedizioniere  = tipoSped.id_tipo_spedizioniere 
+	inner join car_d_comune comune on sped.id_comune = comune.id_comune 
+	where 
+	  domanda.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+  </select>
+  
+  
+  <select id="getVociUtenteByIdTipoModelloGruppo" resultType="java.lang.Long">
+    select voceUt.id_voce 
+   	  from car_t_voce_utente voceUt
+		 where id_voce in(
+			select			
+				voce.id_voce	
+			from
+				car_d_voce voce
+			where
+				( voce.id_tipo_modello = #{idTipoModello}
+				and voce.gruppo = #{gruppo}
+				 )
+			)
+		    and voceUt.id_domanda = #{idDomanda}
+  </select>  
+  
+  
+  <select id="getNoteVoceUtenteByIdTipoModelloGruppo" resultType="it.aizoon.ersaf.dto.generati.CarTVoceUtente">
+    select
+      voceUt.id_voce_utente,
+  	  voceUt.id_voce,
+      voceUt.note 
+    from car_t_voce_utente voceUt
+		 where id_voce in(
+			select			
+				voce.id_voce	
+			from
+				car_d_voce voce
+			where
+				( voce.id_tipo_modello = #{idTipoModello}
+				and voce.gruppo = #{gruppo}
+				 )
+			)
+		    and voceUt.id_domanda = #{idDomanda}	
+		    and voceUt.note is not null
+  </select>
+  
+  <select id="getDettaglioAnagraficaAziendaByIdDomanda" resultType="it.aizoon.ersaf.dto.DomandaDto">
+    select 
+		dom.id_domanda,
+		dom.id_stato_comunicazione, 
+	    id_associazione_sezione,       		
+		tipoCom.id_tipo_comunicazione as idTipoComunicazione,
+		tipoCom.desc_estesa as descTipoDomanda,
+		statoComunicaz.id_stato_comunicazione,
+		statoComunicaz.desc_stato as descStatoDomanda,				
+		utente.id_utente,
+		utente.cognome,
+		utente.nome,
+		utente.codice_fiscale,
+		utente.data_nascita,				
+		utente.cap,
+		utente.indirizzo,
+		utente.telefono,
+		utente.cellulare,
+		utente.email,
+		comuneNascita.id_comune as idComuneNascita,
+		comuneNascita.denom_comune as comuneNascita,
+		provNascita.id_provincia as idProvNascita,
+		provNascita.denom_provincia as provNascita,
+		comuneRes.id_comune as idComuneResidenza,
+		comuneRes.denom_comune as comuneResidenza,		
+		provRes.id_provincia as idProvResidenza,
+		provRes.denom_provincia as provResidenza,		
+		utente.denom_comune_est_nascita,
+		utente.denom_comune_est_resid,
+		dom.data_inserimento as dataInserimento,
+		flusso.id_tipo_flusso,
+		flusso.id_flusso,
+		tipoComSuccessiva.desc_breve as descTipoComSuccessiva,
+		dom.id_spedizioniere,
+		sped.id_tipo_spedizioniere,
+		tipoSped.denom_tipo_spedizioniere, 
+		sped.cuaa,
+		sped.denom_spedizioniere, 
+		sped.nome as nomeSped,
+		sped.cognome as cognomeSped,
+		sped.telefono as telefonoSped,
+		sped.cellulare as cellSped,
+		sped.fax as faxSped,
+		sped.cap as capSped,
+		sped.indirizzo as indirizzoSped,
+		sped.id_comune as idComuneSped,
+		comune.denom_comune as denomComuneSped,
+		provSped.denom_provincia as denomProvinciaSped,
+		sped.email as emailSped,
+		sped.pec as pecSped,
+		sped.partita_iva as partitaIva,
+		sped.tipo_spedizioniere_altro,	
+		dom.cod_domanda,
+		dom.numero_protocollo,
+		dom.data_protocollo,
+		dom.codice_fitok,
+		dom.tariffa,
+		dom.note,
+		dom.id_ispettore,
+		dom.data_autorizzazione_passaporto,
+		cdtp.desc_estesa as tipologiaPassaporto,
+		upper(sped.codice_ruop) as codice_ruop,
+		sped.data_registrazione_ruop,
+		case when cti.tipo_ispettore = 'I' then 
+				ctu2.cognome || ' ' || ctu2.nome || ' ' || cti.numero_tessera  || ' (Ispettore)'
+			 when cti.tipo_ispettore = 'A'then 
+		 		ctu2.cognome || ' ' || ctu2.nome || ' ' || cti.numero_tessera  || ' (Agente)'
+		end descIspettore,
+		utente.id_nazione_est_nascita,	
+		nazioneNascita.denom_nazione as nazioneEstNascita,
+		utente.id_nazione_est_resid,
+		nazioneResid.denom_nazione as nazioneEstResid	
+	 from
+		car_t_domanda dom
+		left outer join car_t_spedizioniere sped on
+			dom.id_spedizioniere = sped.id_spedizioniere
+		left outer join car_d_tipo_spedizioniere tipoSped on
+			sped.id_tipo_spedizioniere = tipoSped.id_tipo_spedizioniere
+		left outer join car_d_comune comune on
+			sped.id_comune = comune.id_comune
+		left outer join car_d_provincia provSped on
+			provSped.id_provincia = comune.id_provincia
+		left outer join car_d_tipo_comunicazione tipoCom on
+			dom.id_tipo_comunicazione = tipoCom.id_tipo_comunicazione
+		left outer join car_d_stato_comunicazione statoComunicaz on
+			dom.id_stato_comunicazione = statoComunicaz.id_stato_comunicazione
+		left outer join car_t_utente utente on
+			utente.id_utente = dom.id_utente
+		left outer join car_d_comune comuneNascita on
+			comuneNascita.id_comune = utente.id_comune_nascita
+		left outer join car_d_provincia provNascita on
+			provNascita.id_provincia = comuneNascita.id_provincia
+		left outer join car_d_comune comuneRes on
+			comuneRes.id_comune = utente.id_comune_residenza
+		left outer join car_d_provincia provRes on
+			provRes.id_provincia = comuneRes.id_provincia
+		left outer join car_r_tipo_com_sezione tipoComSezione on
+			tipoComSezione.id_tipo_comunicazione = tipoCom.id_tipo_comunicazione
+		left outer join car_r_flusso_domanda flussoDom on
+			dom.id_domanda = flussoDom.id_domanda
+		left outer join car_t_flusso flusso on
+			flussoDom.id_flusso = flusso.id_flusso
+		left outer join car_r_tipo_flusso_com tipoFlussoCom on
+			tipoFlussoCom.id_tipo_flusso = flusso.id_tipo_flusso
+			and tipoFlussoCom.id_tipo_comunicazione = dom.id_tipo_comunicazione
+		left outer join car_r_tipo_flusso_com tipoFlussoSuccessivo on
+			tipoFlussoCom.id_tipo_flusso = tipoFlussoSuccessivo.id_tipo_flusso
+			and tipoFlussoSuccessivo.ordinamento = tipoFlussoCom.ordinamento + 1
+		left outer join car_d_tipo_comunicazione tipoComSuccessiva on
+			tipoFlussoSuccessivo.id_tipo_comunicazione = tipoComSuccessiva.id_tipo_comunicazione
+		left outer join car_t_ispettore cti on cti.id_ispettore = dom.id_ispettore 
+		left outer join car_t_utente ctu2 on ctu2.id_utente =cti.id_utente 
+		left outer join car_d_nazione nazioneNascita ON nazioneNascita.id_nazione = utente.id_nazione_est_nascita	
+		left outer join car_d_nazione nazioneResid ON nazioneResid.id_nazione = utente.id_nazione_est_resid	
+		left outer join car_d_tipologia_passaporto cdtp on cdtp.id_tipologia_passaporto = dom.id_tipologia_passaporto 
+	where 
+		dom.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+  </select>
+  
+  <select id="getDescrVociUtenteByIdTipoModelloGruppo" resultType="java.lang.String">
+    select dVoce.desc_estesa 
+   	  from car_t_voce_utente voceUt
+   	  inner join car_d_voce dVoce 
+   	     on dVoce.id_voce = voceUt.id_voce and id_tipo_modello = #{idTipoModello} and gruppo = #{gruppo}
+	 where voceUt.id_domanda = #{idDomanda}	
+  </select>
+  
+  <select id="getDescrTipologieDomandaByIdDomanda" resultType="java.lang.String">
+    	select		 
+		  tip.desc_breve 
+		from 
+		  car_r_domanda_tipologia domandaTip
+		  inner join car_d_tipologia tip on tip.id_tipologia = domandaTip.id_tipologia 
+		where 
+		  domandaTip.id_domanda = #{idDomanda}
+  </select>
+  
+  <update id="updateUtenteAnagrafica" parameterType="it.aizoon.ersaf.dto.generati.CarTUtente">
+    update
+		caronte.car_t_utente
+	set
+		codice_fiscale = #{codiceFiscale,jdbcType=VARCHAR},
+		cognome = #{cognome,jdbcType=VARCHAR},
+		nome = #{nome,jdbcType=VARCHAR},
+		telefono = #{telefono,jdbcType=VARCHAR},	
+		data_update = #{dataUpdate,jdbcType=TIMESTAMP},	
+		data_nascita = #{dataNascita,jdbcType=TIMESTAMP},
+		id_comune_nascita = #{idComuneNascita,jdbcType=SMALLINT},
+		denom_comune_est_nascita = #{denomComuneEstNascita,jdbcType=VARCHAR},
+		id_comune_residenza = #{idComuneResidenza,jdbcType=SMALLINT},
+		denom_comune_est_resid = #{denomComuneEstResid,jdbcType=VARCHAR},
+		indirizzo = #{indirizzo,jdbcType=VARCHAR},
+		cap = #{cap,jdbcType=VARCHAR},
+		cellulare = #{cellulare,jdbcType=VARCHAR},
+		id_utente_update = #{idUtenteUpdate,jdbcType=INTEGER},
+		modificato_admin = #{modificatoAdmin,jdbcType=BIT},
+		id_nazione_est_nascita = #{idNazioneEstNascita,jdbcType=SMALLINT},
+		id_nazione_est_resid = #{idNazioneEstResid,jdbcType=SMALLINT}
+	where
+		( id_utente = #{idUtente,jdbcType=INTEGER} )
+  </update>
+
+  <select id="getDettaglioGestioneByIdDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.DomandaDto">
+     select  
+        dom.id_domanda, 
+        dom.cod_domanda,
+		dom.numero_protocollo,
+		dom.data_protocollo,
+		dom.codice_fitok,
+		dom.tariffa,
+		dom.note,
+		dom.id_ispettore,
+		upper(cts.codice_ruop) as codice_ruop,
+		cts.data_registrazione_ruop,	
+		cts.id_spedizioniere,
+		dom.id_tipologia_passaporto,
+		dom.data_autorizzazione_passaporto
+		from 
+			car_t_domanda dom
+			inner join car_t_spedizioniere cts on cts.id_spedizioniere = dom.id_spedizioniere
+			left outer join car_t_centro_aziendale ctca on ctca.id_centro_aziendale = dom.id_centro_aziendale_passaporto 
+			left outer join car_d_tipologia_passaporto cdtp on cdtp.id_tipologia_passaporto = ctca.id_tipologia_passaporto 
+		where 
+			dom.id_domanda = #{idDomanda}
+	</select>	
+	
+	<select id="countAllegatiByIdDomandaIdTipoAllegato" resultType="java.lang.Long">
+	    select count(allegatoDom.id_allegato_domanda)
+        from 
+          car_t_allegato_domanda allegatoDom
+        where
+          allegatoDom.id_domanda = #{idDomanda}
+        and allegatoDom.id_tipo_allegato = #{idTipoAllegato}
+	</select>
+	
+	<select id="getAttivitaMaterialeById" parameterType="java.lang.Long" resultMap="getTipologieAttMaterialeResultMap">
+     select 
+       attMatUt.id_att_materiale_utente,
+       attMatUt.id_tipo_attivita,
+       tipoAtt.desc_breve as denomTipologia,
+       tipoAtt.desc_estesa as denomTipologiaEstesa,
+       attMatUt.id_materiale,
+       mat.desc_breve,
+       mat.desc_estesa,
+       attMatUt.note,
+       attMatUt.id_domanda,
+       attMatUt.richiesta_passaporto
+     from 
+       car_r_att_materiale_utente attMatUt
+       inner join car_d_tipo_attivita tipoAtt on attMatUt.id_tipo_attivita = tipoAtt.id_tipo_attivita
+       left outer join car_d_materiale mat on attMatUt.id_materiale = mat.id_materiale 
+     where 
+       attMatUt.id_att_materiale_utente = #{idAttivitaMaterialeUtente,jdbcType=DECIMAL}
+   </select>
+   
+<select id="getTipiDomandaFlusso" resultType="it.aizoon.ersaf.dto.generati.CarDTipoComunicazione">   
+    SELECT
+        tipoCom.ID_TIPO_COMUNICAZIONE,
+        tipoCom.DESC_BREVE,
+        tipoCom.DESC_ESTESA,
+        tipoCom.ISTRUZIONI,
+        tipoCom.ABILITATO,
+        tipoCom.QUALITA_DI,
+        tipoCom.INIZIO_VALIDITA,
+        tipoCom.FINE_VALIDITA
+        FROM car_D_TIPO_COMUNICAZIONE tipoCom
+        INNER JOIN car_R_TIPO_COM_GRUPPO tipoComGruppo ON
+        tipoCom.ID_TIPO_COMUNICAZIONE = tipoComGruppo.ID_TIPO_COMUNICAZIONE
+        INNER JOIN car_R_UTENTE_GRUPPO utenteGruppo ON
+        tipoComGruppo.ID_GRUPPO = utenteGruppo.ID_GRUPPO
+        INNER JOIN car_R_TIPO_COM_SEZIONE tipoComSez ON
+        tipoCom.ID_TIPO_COMUNICAZIONE = tipoComSez.ID_TIPO_COMUNICAZIONE
+        INNER JOIN car_r_tipo_flusso_com tipoFlussoCom ON
+        tipoCom.ID_TIPO_COMUNICAZIONE = tipoFlussoCom.ID_TIPO_COMUNICAZIONE
+        WHERE tipoCom.FINE_VALIDITA is null
+        AND tipoComGruppo.FINE_VALIDITA is null
+        AND tipoComSez.FINE_VALIDITA is null
+        AND utenteGruppo.ID_UTENTE = #{idUtente}
+        AND abilitato = true 
+        AND tipoComSez.ID_ASSOCIAZIONE_SEZIONE = #{idAssociazioneSezione}        
+        AND TIPOFLUSSOCOM.ORDINAMENTO = 1
+        ORDER BY tipoCom.ID_TIPO_COMUNICAZIONE 
+  </select>
+
+ <select id="getTipologieByIdDomanda" parameterType="java.lang.Long" resultType="java.lang.String">
+     select tipologia 
+       from (select max(case when attMatUt.richiesta_passaporto = 'S' or attMatUt.id_tipo_attivita = 1  
+		         			then '4' else '0' 
+		         	  end) as tipologia		
+		       from car_r_att_materiale_utente attMatUt
+		      where attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+		    UNION 
+		       select max(case when attMatUt.id_tipo_attivita = ${@it.aizoon.ersaf.util.CaronteConstants@ID_TIPO_ATTIVITA_IMPORTAZIONE} 
+		         			then '1' else '0'  
+		         	  end) as tipologia
+		         from car_r_att_materiale_utente attMatUt
+		        where attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+		     UNION 
+		       select max(case when attMatUt.id_tipo_attivita = ${@it.aizoon.ersaf.util.CaronteConstants@ID_TIPO_ATTIVITA_ESPORTAZIONE}
+		         			then '2' else '0'  
+		         	  end) as tipologia
+		         from car_r_att_materiale_utente attMatUt
+		        where attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}) tipologie
+       where tipologia != '0' 
+ </select>
+ 
+ <select id="getTipoDomandaSuccessiva" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.generati.CarRTipoFlussoCom">
+ 	select
+		tipo_flusso_successivo.id_tipo_comunicazione,
+		tipo_flusso_successivo.id_stato_comunicazione
+	from
+		CAR_R_FLUSSO_DOMANDA flussoDomanda
+		INNER JOIN CAR_T_DOMANDA dom ON dom.id_domanda  = flussoDomanda.id_domanda
+		INNER join CAR_T_FLUSSO flusso ON flusso.id_flusso = flussoDomanda.id_flusso
+		INNER JOIN CAR_R_TIPO_FLUSSO_COM tipoFlussoCom on tipoFlussoCom.id_tipo_flusso = flusso.id_tipo_flusso
+		and tipoFlussoCom.id_tipo_comunicazione = dom.id_tipo_comunicazione
+		left outer join CAR_R_TIPO_FLUSSO_COM tipo_flusso_successivo
+		ON tipoFlussoCom.id_tipo_flusso = tipo_flusso_successivo.id_tipo_flusso
+		and tipo_flusso_successivo.ordinamento = tipoFlussoCom.ordinamento + 1
+	where
+	    flussoDomanda.id_domanda = #{idDomanda,jdbcType=DECIMAL}		
+		AND not exists (
+	        select 'x' FROM CAR_R_FLUSSO_DOMANDA
+	        where id_flusso = flussoDomanda.id_flusso
+	        and progressivo > flussoDomanda.progressivo
+        )
+</select> 
+
+<select id="getModuloById" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.ModuloDTO">
+		SELECT id_tipo_modulo,
+		modulo.id_modulo,
+		coalesce(modulo.nome_file, TIPO_MODULO.NOME_FILE) NOME_FILE,
+		modulo.modulo,
+		modulo.id_domanda
+		FROM car_t_modulo modulo
+		INNER JOIN
+		car_d_tipo_modulo tipo_modulo
+		USING (id_tipo_modulo)
+		WHERE modulo.id_modulo = #{idModulo}
+</select>
+
+<select id="getStatoAbilitatoByIdUtente" parameterType="java.lang.Long"
+		resultType="java.lang.Long">
+		select 
+			distinct gruppoStato.id_stato
+		from
+			CAR_R_UTENTE_GRUPPO utenteGruppo
+			INNER JOIN CAR_R_GRUPPO_STATO gruppoStato on gruppoStato.id_gruppo = utenteGruppo.id_gruppo
+		where
+			utenteGruppo.id_utente = #{idUtente,jdbcType=DECIMAL}
+			and gruppoStato.id_stato = #{idStato,jdbcType=DECIMAL}
+</select>
+
+<select id="getListaFlussoDomanda" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.DomandaDto">
+		SELECT 
+		  flusso.id_flusso,
+		  flussoDom.progressivo,
+		  domanda.id_domanda,
+		  statocom.desc_stato AS descStatoDomanda,
+		  tipocom.desc_breve as descTipoDomanda,
+		  domanda.data_aggiornamento,
+		  domanda.numero_protocollo,
+		  domanda.data_protocollo
+		FROM CAR_R_FLUSSO_DOMANDA flusso
+		  INNER JOIN CAR_R_FLUSSO_DOMANDA flussoDom USING (id_flusso)
+		  INNER JOIN CAR_T_DOMANDA DOMANDA ON flussoDom.id_domanda = domanda.id_domanda 
+		  INNER JOIN CAR_D_STATO_COMUNICAZIONE statocom on statocom.id_stato_comunicazione = domanda.id_stato_comunicazione
+		  INNER JOIN CAR_D_TIPO_COMUNICAZIONE tipocom on tipocom.id_tipo_comunicazione = domanda.id_tipo_comunicazione
+		WHERE 
+		  flusso.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+		ORDER BY domanda.DATA_INSERIMENTO
+</select>
+
+ <select id="getDomandaByIdCentroAziendale" parameterType="java.lang.Long"
+		resultType="it.aizoon.ersaf.dto.DomandaDto">
+		select 
+			r.id_centro_aziendale,
+			d.id_domanda, 
+			d.id_tipo_comunicazione, 
+			d.id_stato_comunicazione 
+		from 
+			car_t_domanda d, 
+			car_r_domanda_centro_az r
+		where 
+			d.id_domanda = r.id_domanda
+			and r.id_centro_aziendale = #{idCentroAz,jdbcType=DECIMAL}
+			and d.id_stato_comunicazione in (2,3)
+		order by d.data_aggiornamento desc 
+		limit 1
+	</select>
+	
+	 <select id="getTipologieAttivitaByIdDomanda" parameterType="java.lang.Long"	resultType="java.lang.String">
+	 
+		select string_agg(listaAtt.attivita_mat, '; ') as tipologiaAttivita
+		  from ( select upper(max(cdta.desc_estesa)) ||' ' ||string_agg(upper(coalesce(cdm.desc_estesa,'')),', ') || coalesce(cramu.note, '')  as attivita_mat
+           		   from car_r_att_materiale_utente cramu
+	         inner join car_d_tipo_attivita cdta on cdta.id_tipo_attivita = cramu.id_tipo_attivita
+	          left join car_d_materiale cdm on cdm.id_materiale = cramu.id_materiale 
+	              where id_domanda = #{idDomanda,jdbcType=DECIMAL}
+	                and cramu.id_tipo_attivita not in (10,11)
+		       group by cdta.desc_estesa, cramu.note  
+	        union 
+				select 
+					case when cdv.id_tipo_modello = 3 and cdv.gruppo = 1 then 'IMPORTAZIONE: ' ||string_agg(DISTINCT desc_estesa,', ') 
+						when cdv.id_tipo_modello = 4 and cdv.gruppo = 3 then 'ESPORTAZIONE: ' ||string_agg(DISTINCT desc_estesa,', ') 
+					else null	
+					end attivita_mat
+				 from car_t_voce_utente ctvu
+		   inner join car_d_voce cdv on cdv.id_voce = ctvu.id_voce
+			    where cdv.id_tipo_modello in (3,4)
+				  and id_domanda = #{idDomanda,jdbcType=DECIMAL}
+		     group by cdv.id_tipo_modello, cdv.gruppo) as listaAtt
+
+	</select>
+	
+	<select id="checkIfCentroAzExists" 	resultType="java.lang.Long">
+		SELECT max(ctca.id_centro_aziendale) 
+          FROM car_t_centro_aziendale ctca 
+         WHERE id_comune = #{idComune,jdbcType=DECIMAL}
+           AND UPPER(indirizzo) = UPPER(#{indirizzo,jdbcType=VARCHAR})
+           AND codice_fiscale = #{codiceFiscale,jdbcType=VARCHAR}
+   </select>
+   
+   <select id="checkIfCentroAzExistsByIdDomanda" 	resultType="java.lang.Long">
+   		SELECT max(ctca.id_centro_aziendale) 
+          FROM car_t_centro_aziendale ctca 
+          LEFT JOIN car_r_domanda_centro_az crdca ON crdca.id_centro_aziendale = ctca.id_centro_aziendale 
+         WHERE crdca.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+           and id_comune = #{idComune,jdbcType=DECIMAL}
+           AND UPPER(indirizzo) = UPPER(#{indirizzo,jdbcType=VARCHAR})
+ 	</select>
+
+	<select id="hasTipologiaAttMaterialeById" parameterType="java.lang.Long" resultType="java.lang.Long">
+     select 
+       tipoAtt.id_tipo_attivita
+       from 
+       car_r_att_materiale_utente attMatUt
+       inner join car_d_tipo_attivita tipoAtt on attMatUt.id_tipo_attivita = tipoAtt.id_tipo_attivita
+       left outer join car_d_materiale mat on attMatUt.id_materiale = mat.id_materiale 
+     where 
+       tipoAtt.id_tipo_attivita = #{idTipoAttivita,jdbcType=DECIMAL} 
+       and attMatUt.id_domanda = #{idDomanda,jdbcType=DECIMAL}
+   </select>
+   
+   <select id="getIdDomandaRuopConvalidata" parameterType="java.lang.Long" resultType="java.lang.Long">
+    SELECT max(ctd.id_domanda) 
+      FROM car_t_domanda ctd 
+     INNER JOIN car_t_spedizioniere cts ON cts.id_spedizioniere = ctd.id_spedizioniere 
+     WHERE cts.codice_ruop is not null
+       AND cts.id_stato_azienda = ${@it.aizoon.ersaf.util.CaronteConstants@ID_STATO_AZIENDA_ATTIVA}
+       AND ctd.id_tipo_comunicazione = ${@it.aizoon.ersaf.util.CaronteConstants@ID_TIPO_COMUNICAZIONE_DOMANDA_RUOP}
+       AND id_stato_comunicazione = ${@it.aizoon.ersaf.util.CaronteConstants@STATO_COMUNICAZIONE_CONVALIDATA}
+       AND ctd.id_spedizioniere = #{idSpedizioniere,jdbcType=DECIMAL}
+   </select>
+   
+   <select id="getCentroAziendalePassaportoByIdDomanda" resultType="it.aizoon.ersaf.dto.CentroAziendaleDomandaDTO">
+     select    
+      centroAz.id_centro_aziendale,
+      upper(centroAz.cod_centro_aziendale) as cod_centro_aziendale,
+      upper(centroAz.denominazione) as denominazione,
+      upper(comune.denom_comune) as denom_comune,
+      prov.sigla_provincia,
+      centroAz.cap,
+      upper(centroAz.indirizzo) as indirizzo,
+      upper(centroAz.frazione) as frazione,
+      centroAz.telefono,
+      centroAz.cellulare,
+      upper(centroAz.email) as email,
+      upper(centroAz.pec) as pec 
+    from 
+    car_t_domanda domanda
+    inner join car_t_centro_aziendale centroAz on centroAz.id_centro_aziendale  = domanda.id_centro_aziendale_passaporto
+    left outer join car_d_comune comune 
+     on centroAz.id_comune = comune.id_comune 
+    left outer join car_d_provincia prov
+      on comune.id_provincia  = prov.id_provincia 
+    where 
+      domanda.id_domanda = #{idDomanda,jdbcType=BIGINT}
+      and centroAz.id_stato_azienda != ${@it.aizoon.ersaf.util.CaronteConstants@ID_STATO_AZIENDA_CANCELLATA}
+    order by centroAz.cod_centro_aziendale
+   </select>
+   
+   
+  <select id="getVersioneDomandaByDataAggiornamento" resultType="java.lang.Long">
+  	 SELECT 
+  	   id_versione_domanda 
+	 FROM
+	   car_d_versione_domanda versDomanda 
+     WHERE
+       #{dataAggiornamento,jdbcType=TIMESTAMP} BETWEEN data_inizio_vesione AND coalesce(data_fine_versione, now()::timestamp) 
+  </select>
+  
+  <select id="getUltimaVersioneDomanda" resultType="java.lang.Long">
+  	SELECT 
+  	   id_versione_domanda 
+	 FROM
+	   car_d_versione_domanda versDomanda 
+     WHERE
+        versDomanda.data_fine_versione is null   
+  </select>
+   
+   
+
+</mapper>

@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2013-2017 the original author or authors. Licensed under the 
+	Apache License, Version 2.0 (the "License"); you may not use this file except 
+	in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+	Unless required by applicable law or agreed to in writing, software distributed 
+	under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. See the License for 
+	the specific language governing permissions and limitations under the License. -->
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="it.aizoon.ersaf.integration.mybatis.mapper.SpecieMapper">
+
+	<select id="ricercaListaSpecie" parameterType="it.aizoon.ersaf.form.RicercaSpecieForm"
+		resultType="it.aizoon.ersaf.dto.SpecieDTO">
+		SELECT specie.id_specie,
+			specie.cod_specie,
+			specie.attivo,
+			specie.id_utente_insert,
+			specie.data_insert,
+			specie.data_update,
+			specie.id_nazione,
+			specie.id_autore_eppo,
+			specie.id_genere,
+			lingua_specie.denom_specie,
+			lingua_specie.denom_specie_commerciale,
+			lingua_specie.preferred,
+			lingua.desc_lingua,
+			lingua.id_lingua,
+			genere.id_genere,
+			genere.denom_genere,
+			locale.denom_specie AS denom_specie_locale
+		FROM car_d_specie specie
+			INNER JOIN car_r_lingua_specie lingua_specie
+				ON specie.id_specie = lingua_specie.id_specie
+			INNER JOIN car_d_lingua lingua
+				ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = upper('la')
+			INNER JOIN ( SELECT genere.id_genere, 
+					genere.cod_genere, 
+					lingua_genere.denom_genere 
+				    FROM car_d_genere genere
+				      INNER JOIN car_r_lingua_genere lingua_genere
+					ON genere.id_genere = lingua_genere.id_genere
+				      INNER JOIN car_d_lingua lingua
+					ON lingua_genere.id_lingua = lingua.id_lingua
+				    WHERE upper(lingua.cod_lingua) = 'LA')
+				    AS genere ON genere.id_genere = specie.id_genere
+			LEFT OUTER JOIN (SELECT lingua_specie_locale.id_specie, lingua_specie_locale.denom_specie FROM car_r_lingua_specie lingua_specie_locale 
+				INNER JOIN car_d_lingua lingua_locale ON lingua_specie_locale.id_lingua = lingua_locale.id_lingua AND upper(lingua_locale.cod_lingua) = upper(#{codLingua})) AS locale ON specie.id_specie = locale.id_specie
+		<where>
+			<if test="codSpecie != null">
+			<bind name="codSpecie" value="codSpecie + '%'"/>
+				AND upper(specie.cod_specie) LIKE upper(#{codSpecie})
+			</if>
+			<if test="denomSpecie != null">
+				<bind name="denomSpecie" value="denomSpecie + '%'"/>
+				AND UPPER(lingua_specie.denom_specie) LIKE UPPER(#{denomSpecie})
+			</if>
+			<if test="denomSpecieLocale != null">
+				<bind name="denomSpecieLocale" value="denomSpecieLocale + '%'" />
+				AND UPPER(locale.denom_specie) LIKE UPPER(#{denomSpecieLocale})
+			</if>
+			<if test="dataInsert != null">
+				AND specie.data_insert = #{dataInsert}
+			</if>
+			<if test="denomGenere != null">
+				<bind name="denomGenere" value="denomGenere + '%'"/>
+				AND upper(genere.denom_genere) LIKE upper(#{denomGenere})
+			</if>
+			<if test="attivo != null">
+				AND attivo = #{attivo}
+			</if>			
+		</where>
+		ORDER BY UPPER(lingua_specie.denom_specie)
+		LIMIT 500
+	</select>
+  
+  <select id="getDettaglioSpecie" parameterType="map"
+		resultType="it.aizoon.ersaf.dto.SpecieDTO">
+	SELECT specie.id_specie,
+			specie.cod_specie,
+			specie.attivo,
+			specie.data_insert,
+			specie.data_update,
+			specie.id_nazione,
+			specie.id_autore_eppo,
+			specie.id_genere,
+			lingua_specie.denom_specie,
+			lingua_specie.denom_specie_commerciale,
+			lingua_specie.preferred,
+			autore.desc_autore_eppo,
+			lingua.desc_lingua,
+			lingua.id_lingua,
+			genere.id_genere,
+			genere.denom_genere,
+			nazione.denom_nazione,
+			locale.id_lingua AS id_lingua_locale,
+			locale.denom_specie AS denom_specie_locale
+		FROM car_d_specie specie
+			INNER JOIN car_r_lingua_specie lingua_specie
+				ON specie.id_specie = lingua_specie.id_specie
+			INNER JOIN car_d_lingua lingua
+				ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = upper('la')
+			INNER JOIN ( SELECT genere.id_genere, 
+					genere.cod_genere, 
+					lingua_genere.denom_genere 
+				    FROM car_d_genere genere
+				      INNER JOIN car_r_lingua_genere lingua_genere
+					ON genere.id_genere = lingua_genere.id_genere
+				      INNER JOIN car_d_lingua lingua
+					ON lingua_genere.id_lingua = lingua.id_lingua
+				    WHERE upper(lingua.cod_lingua) = upper('la'))
+				    AS genere ON genere.id_genere = specie.id_genere
+			LEFT OUTER JOIN car_d_autore_eppo autore 
+				ON specie.id_autore_eppo = autore.id_autore_eppo
+			LEFT OUTER JOIN car_d_nazione nazione 
+				ON specie.id_nazione = nazione.id_nazione
+			LEFT OUTER JOIN (
+        SELECT lingua_specie_locale.id_specie, 
+                lingua_locale.id_lingua, 
+                lingua_specie_locale.denom_specie 
+        FROM car_r_lingua_specie lingua_specie_locale 
+				  INNER JOIN car_d_lingua lingua_locale 
+				    ON lingua_specie_locale.id_lingua = lingua_locale.id_lingua 
+				    AND upper(lingua_locale.cod_lingua) = upper(#{codiceLingua})
+			) AS locale 
+			 ON specie.id_specie = locale.id_specie
+			WHERE specie.id_specie = #{id}
+	</select>
+  
+  <select id="getListaSpecieGenere" parameterType="map" resultType="it.aizoon.ersaf.dto.SpecieDTO">
+    SELECT specie.id_specie,specie.id_genere,
+      lingua_specie.denom_specie,
+      locale.denom_specie AS denom_specie_locale
+    FROM car_d_specie specie
+      INNER JOIN car_r_lingua_specie lingua_specie
+        ON specie.id_specie = lingua_specie.id_specie
+      INNER JOIN car_d_lingua lingua
+        ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = upper('la')
+      LEFT OUTER JOIN (
+        SELECT lingua_specie_locale.id_specie, 
+          lingua_specie_locale.denom_specie 
+        FROM car_r_lingua_specie lingua_specie_locale 
+          INNER JOIN car_d_lingua lingua_locale 
+            ON lingua_specie_locale.id_lingua = lingua_locale.id_lingua 
+            AND upper(lingua_locale.cod_lingua) = upper(#{codLingua,jdbcType=CHAR})
+      ) AS locale 
+        ON specie.id_specie = locale.id_specie
+    WHERE specie.id_genere = #{idGenere,jdbcType=BIGINT}
+    ORDER BY CASE WHEN position(' sp.' IN lingua_specie.denom_specie) > 0 THEN 0 ELSE 1 END, denom_specie
+  </select>
+  
+  <select id="getListaSpecieDenomGenere" parameterType="map" resultType="it.aizoon.ersaf.dto.SpecieDTO">
+    SELECT specie.id_specie,specie.id_genere,
+      lingua_specie.denom_specie,
+      locale.denom_specie AS denom_specie_locale
+    FROM car_r_lingua_genere lingua_genere
+      INNER JOIN car_d_lingua lingua_gen
+        ON lingua_genere.id_lingua = lingua_gen.id_lingua
+      INNER JOIN car_d_specie specie
+        ON lingua_genere.id_genere = specie.id_genere
+      INNER JOIN car_r_lingua_specie lingua_specie
+        ON specie.id_specie = lingua_specie.id_specie
+      INNER JOIN car_d_lingua lingua
+        ON lingua_specie.id_lingua = lingua.id_lingua AND upper(lingua.cod_lingua) = 'LA'
+      LEFT OUTER JOIN (
+        SELECT lingua_specie_locale.id_specie, 
+          lingua_specie_locale.denom_specie 
+        FROM car_r_lingua_specie lingua_specie_locale 
+          INNER JOIN car_d_lingua lingua_locale 
+            ON lingua_specie_locale.id_lingua = lingua_locale.id_lingua 
+            AND upper(lingua_locale.cod_lingua) = upper(#{codLingua,jdbcType=CHAR})
+      ) AS locale 
+        ON specie.id_specie = locale.id_specie
+    WHERE upper(lingua_genere.denom_genere) = upper(#{denomGenere,jdbcType=VARCHAR})
+      AND upper(lingua_gen.cod_lingua) = 'LA'
+      
+    <if test="idSpecieList != null">				
+	  and specie.id_specie not in	  
+	  <foreach item = "item" index = "index" collection = "idSpecieList"
+        open = "(" separator = "," close = ")">
+        #{item}
+   </foreach>
+	  
+	</if>
+      
+    ORDER BY CASE WHEN position(' sp.' IN lingua_specie.denom_specie) > 0 THEN 0 ELSE 1 END, denom_specie
+  </select>
+  
+  <select id="isSpecieEliminabile" parameterType="java.lang.Long" resultType="java.lang.Boolean">
+    SELECT TRUE
+    FROM car_d_specie AS specie
+    WHERE id_specie = #{idSpecie} 
+    AND id_utente_insert != 1
+    AND   NOT EXISTS (
+      SELECT 'x'
+      FROM car_r_applicazione_tariffa
+      WHERE id_specie = specie.id_specie)
+    AND   NOT EXISTS (
+      SELECT 'x'
+      FROM car_r_merce_richiesta
+      WHERE id_specie = specie.id_specie)
+  </select>
+  
+  <select id="getListaSpecieByIdVoce" parameterType="java.lang.Long" resultType="it.aizoon.ersaf.dto.SpecieDTO">  
+  	   SELECT specie.id_specie,
+              specie.id_genere,
+      	      linguaSpecie.denom_specie
+         FROM car_r_voce_specie voceSpecie   
+   INNER JOIN car_r_lingua_specie linguaSpecie ON linguaSpecie.id_specie = voceSpecie.id_specie
+   INNER JOIN car_d_specie specie ON specie.id_specie = linguaSpecie.id_specie 
+   INNER JOIN car_d_lingua lingua ON lingua.id_lingua = linguaSpecie.id_lingua
+        WHERE upper(lingua.cod_lingua) = upper('la')
+          AND id_voce = #{idVoce}
+   </select>
+   
+   <select id="getListaSpecieByIdGruppoZPIdGenere" parameterType="map" resultType="it.aizoon.ersaf.dto.SpecieDTO">  
+  	   SELECT zonaProtetta.id_specie, 
+       		  linguaSpecie.denom_specie
+         FROM car_d_zona_protetta zonaProtetta 
+   INNER JOIN car_r_lingua_specie linguaSpecie ON linguaSpecie.id_specie = zonaProtetta.id_specie
+   INNER JOIN car_d_lingua lingua ON lingua.id_lingua = linguaSpecie.id_lingua
+        WHERE upper(lingua.cod_lingua) = upper('la')
+          AND id_gruppo_zona_protetta = #{idGruppoZonaProtetta,jdbcType=BIGINT}
+          AND zonaProtetta.id_genere = #{idGenere,jdbcType=BIGINT}
+          AND zonaProtetta.fine_validita is null
+    </select>
+  
+</mapper>
