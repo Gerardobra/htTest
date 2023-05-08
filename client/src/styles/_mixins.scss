@@ -1,0 +1,33 @@
+@mixin font(
+  $font-weight: 300,
+  $font-size: 16px,
+  $line-height: 16px,
+  $letter-spacing: 0px
+) {
+  font-weight: $font-weight;
+  font-size: $font-size;
+  line-height: $line-height;
+  letter-spacing: $letter-spacing;
+}
+
+@mixin sectionTitle {
+  @include font(500, 18px, 24px, 0);
+  @media (min-width: $tablet-landscape) {
+    font-size: 24px;
+    line-height: 28px;
+  }
+}
+
+@mixin invalidInput {
+  border-color: $primary-error !important;
+  &:hover {
+    box-shadow: 0 0 0 1px $primary-error !important;
+  }
+}
+
+@mixin validInput {
+  border-color: $primary-valid !important;
+  &:hover {
+    box-shadow: 0 0 0 1px $primary-green !important;
+  }
+}

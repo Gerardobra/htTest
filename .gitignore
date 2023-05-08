@@ -1,32 +1,24 @@
-/caronte-common/.project
-/caronte-common/.classpath
-.project
-.settings
-target
-.classpath
-/caronte-ejb/.settings
-/caronte-common/.settings
-/.project
-/caronte-common/target
-/.settings
-/caronte-ejb/target
-/caronte-ejb/*.project
-/caronte-ejb/*.classpath
-/caronte-ear/.settings
-/caronte-ear/target
-/caronte-ear/.project
-/caronte-ear/.classpath
-/caronte-integration/.settings
-/caronte-integration/target
-/caronte-integration/*.project
-/caronte-integration/*.classpath
-/caronte-web/*.tern-project
-/caronte-web/*.classpath
-/caronte-web/*.project
-/.gitignore
-.sass-cache
+# dependencies
+client/node_modules
+server/node_modules
+client/package-lock.json
+server/package-lock.json
 
-/bin/
-.metadata
-.metadata
-/caronte-web/src/main/webapp/WEB-INF/jsp/utenti/spedizionieri/resetpassword.jsp
+# testing
+server/coverage
+
+# production
+Server/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+Desktop.ini
+Thumbs.db
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
